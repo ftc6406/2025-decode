@@ -87,14 +87,19 @@ public class MecanumWheels extends Wheels {
         double backLeftPower = -theta - x + y;
         double backRightPower = theta - x + y;
 
-        // Scale the motor powers to be within +/- 1.0
-        List<Double> powers = Arrays.asList(frontLeftPower, frontRightPower, backLeftPower, backRightPower);
-        double max = Collections.max(powers);
-        if (max > 1.0) {
-            frontLeftPower /= max;
-            frontRightPower /= max;
-            backLeftPower /= max;
-            backRightPower /= max;
+        // Scale the motor powers to be within +/- 1.0.  Use the absolute
+        // maximum magnitude rather than the algebraic maximum to ensure all motors
+        // are scaled properly.  For example, a power set of [-0.8, 0.2, 0.5, 0.4]
+        // should be scaled by 0.8, not 0.5.
+        double maxMagnitude = Math.max(
+                Math.max(Math.abs(frontLeftPower), Math.abs(frontRightPower)),
+                Math.max(Math.abs(backLeftPower), Math.abs(backRightPower))
+        );
+        if (maxMagnitude > 1.0) {
+            frontLeftPower /= maxMagnitude;
+            frontRightPower /= maxMagnitude;
+            backLeftPower /= maxMagnitude;
+            backRightPower /= maxMagnitude;
         }
 
         FRONT_LEFT_MOTOR.setPower(frontLeftPower);
@@ -118,12 +123,23 @@ public class MecanumWheels extends Wheels {
      */
     @Override
     public void driveDistance(double sidewaysDistance, double forwardDistance) {
-        // Apply Pythagorean's Theorem to find the Euclidean distance
-        double totalDistance = Math.sqrt(Math.pow(forwardDistance, 2) + Math.pow(sidewaysDistance, 2));
+        // Apply Pythagorean's Theorem to find the Euclidean distance.  Use hypot
+        // to avoid overflow and improve readability.
+        double totalDistance = Math.hypot(forwardDistance, sidewaysDistance);
 
-        // Scale the motor motor power based on trigonometry
-        double xPower = MOTOR_POWER * (sidewaysDistance / totalDistance);
-        double yPower = MOTOR_POWER * (forwardDistance / totalDistance);
+        // If both distances are zero there is nothing to do.  Guard against
+        // division by zero in the scaling logic below and halt the drive.
+        if (totalDistance == 0) {
+            // Set all motor powers to zero to stop the robot cleanly.
+            drive(0, 0, 0);
+            return;
+        }
+
+        // Scale the motor power based on trigonometry.  Multiply by MOTOR_POWER
+        // after normalizing by the total distance so that larger requested
+        // distances don't inadvertently increase motor power.
+        double xPower = (sidewaysDistance / totalDistance) * MOTOR_POWER;
+        double yPower = (forwardDistance / totalDistance) * MOTOR_POWER;
         drive(xPower, yPower, 0);
 
         int frontLeftTickPosition = FRONT_LEFT_MOTOR.getCurrentPosition() + (int) ((sidewaysDistance - forwardDistance) * TICKS_PER_INCH);
