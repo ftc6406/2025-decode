@@ -1,90 +1,208 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
+import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-/**
- * An OpMode that spins a single REV Core Hex motor at full speed and reports
- * its rotational and linear velocity.  This is useful for characterising
- * motor performance and verifying that the encoder readings are correct.
- *
- * <p>According to REV Robotics documentation, the Core Hex motor has a 72:1
- * gearbox and a quadrature encoder with 4 counts per motor revolution,
- * resulting in 288 counts per output shaft revolution【629472301279711†L219-L231】.
- * Knowing the counts per revolution allows us to convert the encoder
- * velocity (ticks per second) into revolutions per second and RPM.  We also
- * estimate the linear tip speed by assuming the 5 mm hex output has a
- * diameter of approximately 5 mm (0.005 m).
- */
-@TeleOp(name = "CoreHexMotorSpeedTest")
-public class CoreHexMotorSpeedTest extends LinearOpMode {
+@TeleOp(name = "DriverMode")
+public class DriverMode extends CustomLinearOp {
+    // TODO: Replace the driving sensitivity with an appropriate level of sensitivity.
     /**
-     * Counts per output shaft revolution for the Core Hex motor.  The motor
-     * contains a magnetic quadrature encoder with 4 counts per internal
-     * revolution and a 72:1 gearbox, giving 4 × 72 = 288 counts per output
-     * revolution【629472301279711†L219-L231】.
+     * The sensitivity of the robot's driving joystick.
      */
-    private static final double COUNTS_PER_REV = 288.0;
+    private static final double DRIVING_SENSITIVITY = 1.0;
 
     /**
-     * Approximate diameter of the Core Hex motor’s 5 mm hex output, in meters.
-     * The across-flats measurement of the hex is 5 mm, so we use 0.005 m.
+     * Minimum joystick magnitude required to register movement.  Inputs
+     * below this threshold will be treated as zero.  This helps prevent
+     * unintended robot motion when the driver releases the sticks and
+     * eliminates small negative values (e.g. -0.29) shown in telemetry
+     * caused by joystick drift.
      */
-    private static final double SHAFT_DIAMETER_M = 0.005;
+    private static final double DEADBAND = 0.07;
 
     /**
-     * Circumference of the hex output, computed from its diameter.  This is
-     * used to estimate linear tip speed (m/s).  Note that the hex profile
-     * makes the actual path non-circular; this value is a simplification.
+     * Apply a deadband to the given value.  If the absolute value is
+     * less than {@link #DEADBAND}, return zero; otherwise return the
+     * original value.
+     *
+     * @param value The raw joystick value.
+     * @return Zero if the value is within the deadband; otherwise the
+     *         unchanged input value.
      */
-    private static final double SHAFT_CIRCUMFERENCE_M = Math.PI * SHAFT_DIAMETER_M;
+    private double applyDeadband(double value) {
+        return Math.abs(value) < DEADBAND ? 0.0 : value;
+    }
+
+    private static int cameraMonitorViewId;
+
+    /**
+     * The intake motor for the robot.  This motor powers the roller/wheel
+     * mechanism that pulls game pieces into the robot.  It is assumed to
+     * be a REV HD Hex motor (40:1, 150 RPM spur gearbox).  This field is
+     * initialised in {@link #runOpMode()} using the hardware name
+     * "intakeMotor".  If your intake motor uses a different name in
+     * the Robot Controller configuration, update the call to
+     * {@code hardwareMap.get()} accordingly.
+     */
+    private DcMotorEx intakeMotor;
+
+    /**
+     * the loop once.
+     */
+    private void runLoop() {
+        /* Gamepad 1 (Wheel and Webcam Controls) */
+
+        /* Wheel Controls */
+        /*
+         * Drive robot based on joystick input from gamepad1
+         * Right stick moves the robot forwards and backwards and turns it.
+         * The triggers control strafing.  A positive left trigger causes
+         * leftward strafe; a positive right trigger causes rightward strafe.
+         */
+        // Compute raw inputs from gamepad controls.  Right stick Y controls
+        // forward/back (invert so up is positive); left stick X controls
+        // turning; triggers control strafing.
+        double rawStrafe  = (gamepad1.left_trigger > 0) ? -gamepad1.left_trigger : gamepad1.right_trigger;
+        double rawForward = -gamepad1.right_stick_y;  // invert so pushing up moves forward
+        double rawTurn    = gamepad1.left_stick_x;
+
+        // Apply the deadband and sensitivity scaling.  This prevents
+        // unintentional drift when sticks are near center.
+        double strafe  = applyDeadband(rawStrafe)  * DRIVING_SENSITIVITY;
+        double forward = applyDeadband(rawForward) * DRIVING_SENSITIVITY;
+        double turn    = applyDeadband(rawTurn)    * DRIVING_SENSITIVITY;
+
+        // Stop the wheels completely if all inputs are within the deadband.
+        if (strafe == 0.0 && forward == 0.0 && turn == 0.0) {
+            if (WHEELS != null) {
+                WHEELS.drive(0, 0, 0);
+            } else if (MECANUM_DRIVE != null) {
+                MECANUM_DRIVE.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
+            }
+        } else {
+            // Drive using the Wheels subsystem if available; otherwise fall
+            // back to the Road Runner drive.  The order of arguments for
+            // WHEELS.drive() is (xPower, yPower, rotation).
+            if (WHEELS != null) {
+                WHEELS.drive(strafe, forward, turn);
+
+                // Provide telemetry feedback of individual wheel powers when
+                // using a MecanumWheels implementation.  This helps drivers
+                // understand how their inputs translate to motor output.
+                if (WHEELS instanceof org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) {
+                    org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels mech =
+                            (org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) WHEELS;
+                    telemetry.addData("Front left wheel power", mech.getFrontLeftMotor().getPower());
+                    telemetry.addData("Front right wheel power", mech.getFrontRightMotor().getPower());
+                    telemetry.addData("Back left wheel power", mech.getBackLeftMotor().getPower());
+                    telemetry.addData("Back right wheel power", mech.getBackRightMotor().getPower());
+                }
+            } else if (MECANUM_DRIVE != null) {
+                // Fallback: convert the same inputs into a PoseVelocity2d.  Note
+                // that Road Runner uses +y forward and +x right.  We negate
+                // forward to maintain consistency with the WHEELS.drive() call.
+                PoseVelocity2d velocity = new PoseVelocity2d(
+                        new Vector2d(strafe, -forward),
+                        turn
+                );
+                MECANUM_DRIVE.setDrivePowers(velocity);
+            }
+        }
+
+        /* Webcam controls */
+        // Save CPU resources; can resume streaming when needed.  When the
+        // driver presses D‑pad down, stop streaming; D‑pad up resumes
+        // streaming.  Check that WEBCAM is not null before calling its
+        // methods.
+        if (gamepad1.dpad_down) {
+            if (WEBCAM != null) {
+                WEBCAM.getVisionPortal().stopStreaming();
+            }
+        } else if (gamepad1.dpad_up) {
+            if (WEBCAM != null) {
+                WEBCAM.getVisionPortal().resumeStreaming();
+            }
+        }
+
+        // Note: If you see a "camera not identified" error on the Driver Station
+        // telemetry, verify that your webcam is configured with the name
+        // "Webcam 1" in the Control Hub configuration.  If it uses a
+        // different name (for example "Webcam"), change the name passed to
+        // hardwareMap.get() in CustomLinearOp.initWebcam().
+
+        /* Gamepad 2 (Additional controls)
+         *
+         * Gamepad2 is reserved for future subsystems.  Since the DECODE
+         * challenge does not use an arm or intake claw, no functional code is
+         * provided here.  Implement your own control logic for other
+         * attachments as needed.
+         */
+
+        telemetry.update();
+    }
 
     @Override
     public void runOpMode() {
-        // Fetch the Core Hex motor from the hardware map.  The name
-        // "coreHexMotor" must match the configuration in the Control Hub.
-        DcMotorEx motor = hardwareMap.get(DcMotorEx.class, "coreHexMotor");
+        super.runOpMode();
 
-        // Set motor direction.  Use REVERSE if the motor spins backwards.
-        motor.setDirection(DcMotorSimple.Direction.FORWARD);
+        // Initialise the intake motor.  This motor is configured as a
+        // REV HD Hex motor (40:1, 150 RPM) with an integrated encoder.  In
+        // the Robot Controller (Control Hub) configuration, ensure you
+        // have added a DC motor device named "intakeMotor" connected to
+        // an unused motor port (e.g. motor port 0 on the Expansion Hub).
+        // See "Hardware configuration" section below for details.
+        try {
+            intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
 
-        // Allow the motor to coast when zero power is applied.
-        motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+            // Set motor direction.  Forward is assumed to pull game pieces
+            // into the robot; reverse this if your intake spins the wrong way.
+            intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
 
-        // Use the built-in encoder for velocity measurement.  RUN_USING_ENCODER
-        // enables getVelocity() to return ticks per second【594545095337415†L320-L322】.
-        motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            // Use RUN_WITHOUT_ENCODER because we are driving the motor at a
+            // constant power and do not need velocity control.  This mode
+            // disables the built‑in velocity PID and simply applies a
+            // percentage of available voltage.
+            intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        telemetry.addLine("Press start to run the Core Hex motor at full speed.");
-        telemetry.update();
-        waitForStart();
+            // Allow the motor to coast when zero power is applied.  If you
+            // prefer the motor to brake when stopped, change to BRAKE.
+            intakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
-        // Spin the motor at full power.  The power value is a percentage of
-        // maximum speed, so 1.0 corresponds to 100% power.
-        motor.setPower(1.0);
+            // Set the intake motor to full power (100%).  This will run the
+            // intake continuously while the teleop mode is active.
+            intakeMotor.setPower(1.0);
 
-        while (opModeIsActive()) {
-            // getVelocity() returns encoder counts per second.
-            double ticksPerSecond = motor.getVelocity();
-
-            // Convert ticks per second to revolutions per second and RPM.
-            double revsPerSecond = ticksPerSecond / COUNTS_PER_REV;
-            double rpm = revsPerSecond * 60.0;
-
-            // Estimate linear speed of the output shaft at its circumference.
-            double metersPerSecond = revsPerSecond * SHAFT_CIRCUMFERENCE_M;
-
-            telemetry.addData("Motor power", motor.getPower());
-            telemetry.addData("Encoder velocity (ticks/s)", ticksPerSecond);
-            telemetry.addData("Motor speed (RPM)", rpm);
-            telemetry.addData("Tip speed (m/s)", metersPerSecond);
-            telemetry.update();
+            telemetry.addLine("Intake motor initialised and running at full power.");
+        } catch (Exception e) {
+            telemetry.addLine("WARNING: Intake motor not found.\n" + e.getMessage());
         }
 
-        // Stop the motor when the opmode ends.
-        motor.setPower(0.0);
+        /*
+        cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
+                "cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName()
+        );
+        WEBCAM.getVisionPortal().stopStreaming();
+         */
+
+        while (opModeIsActive()) {
+            try {
+                runLoop();
+            } catch (Exception e) {
+                telemetry.addLine("\nWARNING AN ERROR OCCURRED!!!");
+                telemetry.addLine(e.getMessage());
+            }
+        }
+
+        // Stop the intake motor when the OpMode ends.  This ensures the
+        // motor does not continue running after you press Stop on the
+        // Driver Station.  Check for null in case the motor failed
+        // initialisation.
+        if (intakeMotor != null) {
+            intakeMotor.setPower(0.0);
+        }
     }
 }
