@@ -8,14 +8,14 @@ import java.io.File;
 
 /**
  * <p>
- * Central place to store where the auto settings file lives.
- * CustomLinearOp and AutoConfig both call getPositionFile().
+ * Central place to store where the auto settings file lives. CustomLinearOp and
+ * AutoConfig both call getPositionFile().
  * </p>
  *
  * <p>
- * NOTE: We use AppUtil.getSettingsFile() so the file is created
- * under /sdcard/FIRST/settings/ on the Control/Driver Hub,
- * which is readable/writable by FTC apps.
+ * NOTE: We use AppUtil.getSettingsFile() so the file is created under
+ * /sdcard/FIRST/settings/ on the Control/Driver Hub, which is readable/writable
+ * by FTC apps.
  * </p>
  */
 public final class AutoSettings {

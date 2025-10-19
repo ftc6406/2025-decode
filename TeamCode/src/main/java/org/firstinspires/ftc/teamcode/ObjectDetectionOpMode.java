@@ -26,12 +26,15 @@ public class ObjectDetectionOpMode extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
-                "cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName()
+        int cameraMonitorViewId =
+                hardwareMap.appContext.getResources().getIdentifier(
+                "cameraMonitorViewId", "id",
+                        hardwareMap.appContext.getPackageName()
         );
 
         webcam = OpenCvCameraFactory.getInstance().createWebcam(
-                hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId
+                hardwareMap.get(WebcamName.class, "Webcam 1"),
+                cameraMonitorViewId
         );
 
         // Set the custom pipeline
@@ -66,7 +69,8 @@ public class ObjectDetectionOpMode extends LinearOpMode {
             Imgproc.cvtColor(input, hsv, Imgproc.COLOR_RGB2HSV);
 
             // Define range of the color you want to detect
-            // Scalar lowerBound = new Scalar(50, 100, 100); // Example for green
+            // Scalar lowerBound = new Scalar(50, 100, 100); // Example for
+            // green
             // Scalar upperBound = new Scalar(70, 255, 255);
 
             // Create mask to filter out the desired color
@@ -97,12 +101,14 @@ public class ObjectDetectionOpMode extends LinearOpMode {
             // Find contours
             List<MatOfPoint> contours = new ArrayList<>();
             Mat hierarchy = new Mat();
-            Imgproc.findContours(mask, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+            Imgproc.findContours(mask, contours, hierarchy, Imgproc.RETR_TREE
+                    , Imgproc.CHAIN_APPROX_SIMPLE);
 
             // Draw contours on the original image
             for (MatOfPoint contour : contours) {
                 Rect rect = Imgproc.boundingRect(contour);
-                Imgproc.rectangle(input, rect, new Scalar(0, 255, 0), 2); // Green rectangles around objects
+                Imgproc.rectangle(input, rect, new Scalar(0, 255, 0), 2); //
+                // Green rectangles around objects
             }
 
             hsv.release();

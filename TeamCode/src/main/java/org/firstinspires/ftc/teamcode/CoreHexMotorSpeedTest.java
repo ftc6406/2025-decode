@@ -8,16 +8,16 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 /**
  * An OpMode that spins a single REV Core Hex motor at full speed and reports
- * its rotational and linear velocity.  This is useful for characterising
- * motor performance and verifying that the encoder readings are correct.
+ * its rotational and linear velocity.  This is useful for characterising motor
+ * performance and verifying that the encoder readings are correct.
  *
  * <p>According to REV Robotics documentation, the Core Hex motor has a 72:1
  * gearbox and a quadrature encoder with 4 counts per motor revolution,
- * resulting in 288 counts per output shaft revolution【629472301279711†L219-L231】.
- * Knowing the counts per revolution allows us to convert the encoder
- * velocity (ticks per second) into revolutions per second and RPM.  We also
- * estimate the linear tip speed by assuming the 5 mm hex output has a
- * diameter of approximately 5 mm (0.005 m).
+ * resulting in 288 counts per output shaft
+ * revolution【629472301279711†L219-L231】. Knowing the counts per revolution
+ * allows us to convert the encoder velocity (ticks per second) into revolutions
+ * per second and RPM.  We also estimate the linear tip speed by assuming the
+ * 5 mm hex output has a diameter of approximately 5 mm (0.005 m).
  */
 @TeleOp(name = "CoreHexMotorSpeedTest")
 public class CoreHexMotorSpeedTest extends LinearOpMode {
@@ -37,10 +37,11 @@ public class CoreHexMotorSpeedTest extends LinearOpMode {
 
     /**
      * Circumference of the hex output, computed from its diameter.  This is
-     * used to estimate linear tip speed (m/s).  Note that the hex profile
-     * makes the actual path non-circular; this value is a simplification.
+     * used to estimate linear tip speed (m/s).  Note that the hex profile makes
+     * the actual path non-circular; this value is a simplification.
      */
-    private static final double SHAFT_CIRCUMFERENCE_M = Math.PI * SHAFT_DIAMETER_M;
+    private static final double SHAFT_CIRCUMFERENCE_M =
+            Math.PI * SHAFT_DIAMETER_M;
 
     @Override
     public void runOpMode() {
@@ -55,10 +56,12 @@ public class CoreHexMotorSpeedTest extends LinearOpMode {
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         // Use the built-in encoder for velocity measurement.  RUN_USING_ENCODER
-        // enables getVelocity() to return ticks per second【594545095337415†L320-L322】.
+        // enables getVelocity() to return ticks per
+        // second【594545095337415†L320-L322】.
         motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        telemetry.addLine("Press start to run the Core Hex motor at full speed.");
+        telemetry.addLine("Press start to run the Core Hex motor at full " +
+                "speed.");
         telemetry.update();
         waitForStart();
 
