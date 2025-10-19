@@ -24,13 +24,13 @@ e.g., motor names or autonomous commands.
 ## Creating a New Repo
 
 > [!Important]
-> Only organization owners have the privileges to delete repos owned by chsRobotix.
-> Before creating a repo under chsRobotix, consider if it is necessary.
+> Only organization owners have the privileges to delete repos owned by ftc6406.
+> Before creating a repo under ftc6406, consider if it is necessary.
 > If not, create it under your own account.
 
 1. On the GitHut website, create a new repo.
-2. Under "Repository template", select "chsRobotix/TemplateRobotController".
-3. Under "Owner", select "chsRobotix".
+2. Under "Repository template", select "ftc6406/TemplateRobotController".
+3. Under "Owner", select "ftc6406".
 4. Name the repository.
    Preferably, the format for naming the repository should be "{starting year}-{season name in `kebab-case`}".
 5. If you desire, add a short description, but it is probably unnecessary.
@@ -44,8 +44,8 @@ which complicates updating the new repository if the template changes.
 To pull from the template, enter into a terminal:
 
 ```shell
-git remote add template https://github.com/chsRobotix/TemplateRobotController.git
-git pull template main
+git remote add template https://github.com/ftc6406/TemplateRobotController.git
+git pull template main --allow-unrelated-histories
 ```
 
 > [!Caution]
@@ -58,7 +58,7 @@ git pull template main
 
 Keep this fork up to date with FTC's
 official [FtcRobotController](https://github.com/FIRST-Tech-Challenge/FtcRobotController.git).
-To do that, go to the GitHub page for [this repository](https://github.com/chsRobotix/TemplateRobotController.git)
+To do that, go to the GitHub page for [this repository](https://github.com/ftc6406/TemplateRobotController.git)
 and click on "Sync fork."
 Alternatively, you can enter into a terminal:
 
