@@ -47,34 +47,14 @@ public class AprilTagTest extends LinearOpMode {
 
     public void initWheels() {
         /*
-         * Define wheels system hardware here.  To make the robot
-         * configuration less brittle, try several common hardware names for
-         * each motor.  Update the candidate lists to match your team’s
-         * naming conventions.  If none of the candidate names are found,
-         * an IllegalArgumentException will be thrown and caught below.
+         * Define wheels system hardware here.
+         * e.g. hardwareMap.get(DcMotor.class, "exampleMotor");
          */
-        DcMotor frontLeft;
-        DcMotor frontRight;
-        DcMotor backLeft;
-        DcMotor backRight;
-        try {
-            frontLeft = pickMotor("frontLeftWheel", "frontLeft", "lf", "leftFront");
-            frontRight = pickMotor("frontRightWheel", "frontRight", "rf", "rightFront");
-            backLeft = pickMotor("backLeftWheel", "backLeft", "lb", "leftBack");
-            backRight = pickMotor("backRightWheel", "backRight", "rb", "rightBack");
-        } catch (IllegalArgumentException e) {
-            telemetry.addLine("ERROR: Unable to find one or more drive motors.  "
-                    + "Check that the motor names in initWheels() match your robot configuration.");
-            telemetry.addLine(e.getMessage());
-            telemetry.update();
-            return;
-        }
-
         MecanumWheels.MotorSet motorSet = new MecanumWheels.MotorSet(
-                frontLeft,
-                frontRight,
-                backLeft,
-                backRight
+                hardwareMap.get(DcMotor.class, "frontLeftWheel"),
+                hardwareMap.get(DcMotor.class, "frontRightWheel"),
+                hardwareMap.get(DcMotor.class, "backLeftWheel"),
+                hardwareMap.get(DcMotor.class, "backRightWheel")
         );
 
         // Approximately measured from the CAD model in inches
@@ -88,27 +68,6 @@ public class AprilTagTest extends LinearOpMode {
         );
 
         WHEELS = new MecanumWheels(motorSet, wheelDistances, ticksPerInch);
-    }
-
-    /**
-     * Helper method to fetch a DC motor using any of the provided names.
-     * Iterates through the names and returns the first motor found.
-     * If none of the names exist in the hardware map, throws an
-     * IllegalArgumentException.
-     *
-     * @param candidates possible hardware names for the motor
-     * @return the corresponding DcMotor
-     */
-    private DcMotor pickMotor(String... candidates) {
-        for (String name : candidates) {
-            try {
-                return hardwareMap.get(DcMotor.class, name);
-            } catch (IllegalArgumentException e) {
-                // Try next candidate
-            }
-        }
-        throw new IllegalArgumentException("Unable to find a hardware device with names "
-                + java.util.Arrays.toString(candidates));
     }
 
     @Override
