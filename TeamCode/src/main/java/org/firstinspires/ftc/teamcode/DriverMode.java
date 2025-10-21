@@ -42,11 +42,11 @@ public class DriverMode extends CustomLinearOp {
     /**
      * The intake motor for the robot.  This motor powers the roller/wheel
      * mechanism that pulls game pieces into the robot.  It is assumed to
-     * be a REV HD Hex motor (40:1, 150 RPM spur gearbox).  This field is
-     * initialised in {@link #runOpMode()} using the hardware name
-     * "intakeMotor".  If your intake motor uses a different name in
-     * the Robot Controller configuration, update the call to
-     * {@code hardwareMap.get()} accordingly.
+     * be a REV Core Hex motor (72:1 gearbox, 288 encoder counts per output
+     * revolution).  This field is initialised in {@link #runOpMode()}
+     * using the hardware name "intakeMotor".  If your intake motor uses
+     * a different name in the Robot Controller configuration, update
+     * the call to {@code hardwareMap.get()} accordingly.
      */
     private DcMotorEx intakeMotor;
 
@@ -76,6 +76,12 @@ public class DriverMode extends CustomLinearOp {
         double forward = applyDeadband(rawForward) * DRIVING_SENSITIVITY;
         double turn    = applyDeadband(rawTurn)    * DRIVING_SENSITIVITY;
 
+        // Invert the forward component to correct the observed inversion of
+        // robot movement.  Without this adjustment, pushing the stick
+        // forward caused the robot to move backward due to motor direction
+        // assignments in {@link org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels}.
+        forward = -forward;
+
         // Stop the wheels completely if all inputs are within the deadband.
         if (strafe == 0.0 && forward == 0.0 && turn == 0.0) {
             if (WHEELS != null) {
@@ -102,11 +108,12 @@ public class DriverMode extends CustomLinearOp {
                     telemetry.addData("Back right wheel power", mech.getBackRightMotor().getPower());
                 }
             } else if (MECANUM_DRIVE != null) {
-                // Fallback: convert the same inputs into a PoseVelocity2d.  Note
-                // that Road Runner uses +y forward and +x right.  We negate
-                // forward to maintain consistency with the WHEELS.drive() call.
+                // Fallback: convert the same inputs into a PoseVelocity2d.  Road
+                // Runner uses +y forward and +x right.  Since we invert the
+                // forward component above to correct for motor orientation,
+                // pass forward directly into the Y component here.
                 PoseVelocity2d velocity = new PoseVelocity2d(
-                        new Vector2d(strafe, -forward),
+                        new Vector2d(strafe, forward),
                         turn
                 );
                 MECANUM_DRIVE.setDrivePowers(velocity);
@@ -134,13 +141,22 @@ public class DriverMode extends CustomLinearOp {
         // different name (for example "Webcam"), change the name passed to
         // hardwareMap.get() in CustomLinearOp.initWebcam().
 
-        /* Gamepad 2 (Additional controls)
+        /* Intake control (Gamepad 2)
          *
-         * Gamepad2 is reserved for future subsystems.  Since the DECODE
-         * challenge does not use an arm or intake claw, no functional code is
-         * provided here.  Implement your own control logic for other
-         * attachments as needed.
+         * Use the left trigger on gamepad2 to control the intake.  When the
+         * trigger is held down, run the intake at full power; when the
+         * trigger is released, stop the intake.  This allows drivers to
+         * toggle the intake on demand rather than running continuously.
          */
+        if (intakeMotor != null) {
+            // Any non‑zero trigger value will run the intake.  Adjust the
+            // threshold if you want partial trigger pull to be ignored.
+            if (gamepad2.left_trigger > 0.05) {
+                intakeMotor.setPower(1.0); // full speed forward
+            } else {
+                intakeMotor.setPower(0.0); // stop intake
+            }
+        }
 
         telemetry.update();
     }
@@ -150,11 +166,12 @@ public class DriverMode extends CustomLinearOp {
         super.runOpMode();
 
         // Initialise the intake motor.  This motor is configured as a
-        // REV HD Hex motor (40:1, 150 RPM) with an integrated encoder.  In
-        // the Robot Controller (Control Hub) configuration, ensure you
-        // have added a DC motor device named "intakeMotor" connected to
-        // an unused motor port (e.g. motor port 0 on the Expansion Hub).
-        // See "Hardware configuration" section below for details.
+        // REV Core Hex motor (72:1 gearbox, 288 counts per revolution) with an
+        // integrated encoder.  In the Robot Controller (Control Hub)
+        // configuration, ensure you have added a DC motor device named
+        // "intakeMotor" connected to an unused motor port (for example
+        // port 0 on the Expansion Hub).  See "Hardware configuration"
+        // instructions below for details.
         try {
             intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
 
@@ -172,11 +189,13 @@ public class DriverMode extends CustomLinearOp {
             // prefer the motor to brake when stopped, change to BRAKE.
             intakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
-            // Set the intake motor to full power (100%).  This will run the
-            // intake continuously while the teleop mode is active.
-            intakeMotor.setPower(1.0);
+            // Do not start the intake motor here.  Intake power is controlled
+            // by the left trigger on gamepad 2 in runLoop().  Initialise
+            // the motor with zero power so it remains stopped until the
+            // driver presses the trigger.
+            intakeMotor.setPower(0.0);
 
-            telemetry.addLine("Intake motor initialised and running at full power.");
+            telemetry.addLine("Intake motor initialised.  Hold LT on gamepad 2 to run.");
         } catch (Exception e) {
             telemetry.addLine("WARNING: Intake motor not found.\n" + e.getMessage());
         }
