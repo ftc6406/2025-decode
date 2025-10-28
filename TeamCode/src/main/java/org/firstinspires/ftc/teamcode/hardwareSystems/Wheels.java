@@ -69,12 +69,6 @@ public abstract class Wheels {
      * @param forwardPower What power to set the motors to.
      */
     public void drive(double forwardPower) {
-<<<<<<< HEAD
-        // Forward/backwards movement does not involve sideways x‑motion,
-        // so supply 0 for the xPower argument. The previous implementation
-        // erroneously passed the forward power as the xPower, causing the
-        // robot to strafe instead of drive forward.
-=======
         /*
          * Forward/backwards movement does not involve sideways x‑motion,
          * so supply 0 for the xPower argument.
@@ -82,7 +76,6 @@ public abstract class Wheels {
          * as the xPower,
          * causing the robot to strafe instead of drive forward.
          */
->>>>>>> 4cf1a4a26de1e20cdb3094d401bfd378b9d1f148
         drive(0, forwardPower, 0);
     }
 
@@ -139,8 +132,6 @@ public abstract class Wheels {
      *                negative is counterclockwise.
      */
     public abstract void turn(double degrees);
-<<<<<<< HEAD
-=======
 
     /**
      * Contains the distances between wheels. Necessary for calculating
@@ -174,5 +165,4 @@ public abstract class Wheels {
             LATERAL_DISTANCE = lateralDistance;
         }
     }
->>>>>>> 4cf1a4a26de1e20cdb3094d401bfd378b9d1f148
 }
