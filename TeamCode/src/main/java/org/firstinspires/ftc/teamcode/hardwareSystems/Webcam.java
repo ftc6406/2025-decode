@@ -8,7 +8,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
+ * The above copyright notice and this permission notice shall be included in
+ *  all
  * copies or substantial portions of the Software.
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -73,15 +74,18 @@ public class Webcam {
         this(webcamName, resolution, new double[]{0, 0, 0}, -1);
     }
 
-    public Webcam(WebcamName webcamName, int[] resolution, double[] poseAdjust) {
+    public Webcam(WebcamName webcamName, int[] resolution,
+                  double[] poseAdjust) {
         this(webcamName, resolution, poseAdjust, -1);
     }
 
-    public Webcam(WebcamName webcamName, int[] resolution, double[] poseAdjust, int cameraMonitorViewId) {
+    public Webcam(WebcamName webcamName, int[] resolution,
+                  double[] poseAdjust, int cameraMonitorViewId) {
         APRIL_TAG = new AprilTagProcessor.Builder().build();
 
         COLOR_PROCESSOR = new PredominantColorProcessor.Builder()
-                .setRoi(ImageRegion.asUnityCenterCoordinates(-0.5, 0.5, 0.5, -0.5))
+                .setRoi(ImageRegion.asUnityCenterCoordinates(-0.5, 0.5, 0.5,
+                        -0.5))
                 .setSwatches(
                         PredominantColorProcessor.Swatch.RED,
                         PredominantColorProcessor.Swatch.BLUE,
@@ -102,7 +106,8 @@ public class Webcam {
 
         OPEN_CV_CAMERA = (cameraMonitorViewId == -1)
                 ? OpenCvCameraFactory.getInstance().createWebcam(webcamName)
-                : OpenCvCameraFactory.getInstance().createWebcam(webcamName, cameraMonitorViewId);
+                : OpenCvCameraFactory.getInstance().createWebcam(webcamName,
+                cameraMonitorViewId);
 
         this.poseAdjust = poseAdjust;
 
@@ -114,7 +119,8 @@ public class Webcam {
         OPEN_CV_CAMERA.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener() {
             @Override
             public void onOpened() {
-                OPEN_CV_CAMERA.startStreaming(resolution[0], resolution[1], OpenCvCameraRotation.UPRIGHT);
+                OPEN_CV_CAMERA.startStreaming(resolution[0], resolution[1],
+                        OpenCvCameraRotation.UPRIGHT);
             }
 
             @Override
@@ -168,7 +174,8 @@ public class Webcam {
     }
 
     /**
-     * Get the last seen contour position. If the camera has never spotted a contour position, it will return null.
+     * Get the last seen contour position. If the camera has never spotted a
+     * contour position, it will return null.
      *
      * @return The last seen contour position.
      */
@@ -228,8 +235,12 @@ public class Webcam {
     }
 
     public static class PipeLine extends OpenCvPipeline {
-        private final Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new org.opencv.core.Size(12, 12));
-        private final Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new org.opencv.core.Size(12, 12));
+        private final Mat erodeElement =
+                Imgproc.getStructuringElement(Imgproc.MORPH_RECT,
+                        new org.opencv.core.Size(12, 12));
+        private final Mat dilateElement =
+                Imgproc.getStructuringElement(Imgproc.MORPH_RECT,
+                        new org.opencv.core.Size(12, 12));
         private Color targetColor;
         private int numContours = 0;
         private double[] contourPosition;
@@ -247,32 +258,39 @@ public class Webcam {
             Imgproc.cvtColor(input, hsv, Imgproc.COLOR_RGB2HSV);
 
             // Define range of the color you want to detect
-            // Scalar lowerBound = new Scalar(50, 100, 100); // Example for green
+            // Scalar lowerBound = new Scalar(50, 100, 100); // Example for
+            // green
             // Scalar upperBound = new Scalar(70, 255, 255);
 
             // Create mask to filter out the desired color(s)
-            Core.inRange(hsv, Color.YELLOW.getLowerBound(), Webcam.Color.RED.getUpperBound(), yellowMask);
+            Core.inRange(hsv, Color.YELLOW.getLowerBound(),
+                    Webcam.Color.RED.getUpperBound(), yellowMask);
             switch (targetColor) {
                 case RED:
-                    Core.inRange(hsv, Color.RED.getLowerBound(), Color.RED.getUpperBound(), redMask);
-                    Core.inRange(hsv, Color.MAGENTA.getLowerBound(), Color.MAGENTA.getUpperBound(), magentaMask);
+                    Core.inRange(hsv, Color.RED.getLowerBound(),
+                            Color.RED.getUpperBound(), redMask);
+                    Core.inRange(hsv, Color.MAGENTA.getLowerBound(),
+                            Color.MAGENTA.getUpperBound(), magentaMask);
                     Core.bitwise_or(redMask, magentaMask, allianceColorMask);
                     break;
 
                 case BLUE:
-                    Core.inRange(hsv, Color.BLUE.getLowerBound(), Color.BLUE.getUpperBound(), allianceColorMask);
+                    Core.inRange(hsv, Color.BLUE.getLowerBound(),
+                            Color.BLUE.getUpperBound(), allianceColorMask);
                     break;
             }
             Core.bitwise_or(yellowMask, allianceColorMask, mask);
 
             // Find contours
             List<MatOfPoint> contours = new ArrayList<>();
-            Imgproc.findContours(mask, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+            Imgproc.findContours(mask, contours, hierarchy, Imgproc.RETR_TREE
+                    , Imgproc.CHAIN_APPROX_SIMPLE);
 
             // Draw contours on the original image
             for (MatOfPoint contour : contours) {
                 Rect rect = Imgproc.boundingRect(contour);
-                Imgproc.rectangle(input, rect, new Scalar(0, 255, 0), 2); // Green rectangles around objects
+                Imgproc.rectangle(input, rect, new Scalar(0, 255, 0), 2); //
+                // Green rectangles around objects
             }
 
             // If any contours were found.
@@ -292,7 +310,8 @@ public class Webcam {
          * Find the middle point of a contour.
          *
          * @param contourPoints An array of the points in the contour.
-         * @return Returns the point in the middle of the contour as a double[] of format [x, y].
+         * @return Returns the point in the middle of the contour as a double[]
+         * of format [x, y].
          */
         private double[] getContourPosition(Point[] contourPoints) {
             double[] position = new double[2];

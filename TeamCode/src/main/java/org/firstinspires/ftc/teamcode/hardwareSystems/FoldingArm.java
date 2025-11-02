@@ -7,115 +7,13 @@ import java.util.HashSet;
 
 public class FoldingArm extends Arm {
     /**
-     * Passed into the {@code FoldingArm} constructor.
-     * Contains the motors and motor types.
-     */
-    public static class MotorSet {
-        private final HashSet<DcMotor> MOTORS;
-
-        // The motor that rotates the arm up and down.
-        private final DcMotor ROTATION_MOTOR;
-        // The motor that folds the arm.
-        private final DcMotor FOLDING_MOTOR;
-
-        public MotorSet(DcMotor rotationMotor, DcMotor foldingMotor) {
-            MOTORS = new HashSet<>();
-            MOTORS.add(rotationMotor);
-            MOTORS.add(foldingMotor);
-
-            ROTATION_MOTOR = rotationMotor;
-            FOLDING_MOTOR = foldingMotor;
-        }
-
-        public MotorSet() {
-            MOTORS = new HashSet<>();
-
-            ROTATION_MOTOR = null;
-            FOLDING_MOTOR = null;
-        }
-    }
-
-    /**
-     * Passed into the {@code FoldingArm} constructor.
-     * Contains the min rotation, max rotation, and ticks per degree.
-     */
-    public static class RotationRange {
-        /**
-         * The minimum rotation of the arm in ticks.
-         */
-        private final int MIN_ROTATION;
-        /**
-         * The maximum rotation of the arm in ticks.
-         */
-        private final int MAX_ROTATION;
-
-        /**
-         * The angle that the arm rotation starts from.
-         * 0.0 ticks will be considered equal to `INITIAL_ANGLE`.
-         */
-        private final double INITIAL_ANGLE;
-
-        /**
-         * How many ticks it takes to rotate the arm by one degree.
-         */
-        private final double TICKS_PER_DEGREE;
-
-        public RotationRange(int minRotation, int maxRotation, double ticksPerDegree) {
-            this(minRotation, maxRotation, 0, ticksPerDegree);
-        }
-
-        public RotationRange(int minRotation, int maxRotation, double initialAngle, double ticksPerDegree) {
-            this.MIN_ROTATION = minRotation;
-            this.MAX_ROTATION = maxRotation;
-            this.INITIAL_ANGLE = initialAngle;
-            this.TICKS_PER_DEGREE = ticksPerDegree;
-        }
-    }
-
-    /**
-     * Passed into the {@code FoldingArm} constructor.
-     * Contains the min folding, max folding.
-     */
-    public static class FoldingRange {
-        // The minimum folding of the arm in ticks.
-        private final int MIN_FOLDING;
-        // The maximum extension of the arm in ticks.
-        private final int MAX_FOLDING;
-        // How many ticks are in a degree.
-        private final double TICKS_PER_DEGREE;
-        /**
-         * The angle that the arm rotation starts from.
-         * 0 ticks will be considered equal to `INITIAL_ANGLE`.
-         */
-        private double INITIAL_ANGLE;
-
-        public FoldingRange(int minFolding, int maxFolding, double ticksPerDegree) {
-            this.MIN_FOLDING = minFolding;
-            this.MAX_FOLDING = maxFolding;
-
-            this.TICKS_PER_DEGREE = ticksPerDegree;
-        }
-
-        public FoldingRange(int minFolding, int maxFolding, double initialAngle, double ticksPerDegree) {
-            this.MIN_FOLDING = minFolding;
-            this.MAX_FOLDING = maxFolding;
-
-            this.INITIAL_ANGLE = initialAngle;
-
-            this.TICKS_PER_DEGREE = ticksPerDegree;
-        }
-    }
-
-    /**
      * The motor power that the arm uses when rotating.
      */
     private static final double ROTATION_POWER = 1;
-
     /**
      * The motor power that the arm uses when rotating.
      */
     private static final double FOLDING_POWER = 0.75;
-
     /**
      * The motor that rotates the arm up and down.
      */
@@ -129,8 +27,8 @@ public class FoldingArm extends Arm {
      */
     private final int MAX_ROTATION;
     /**
-     * The angle that the arm rotation starts from.
-     * 0 ticks will be considered equal to `INITIAL_ANGLE`.
+     * The angle that the arm rotation starts from. 0 ticks will be considered
+     * equal to `INITIAL_ANGLE`.
      */
     private final double INITIAL_ROTATION_ANGLE;
     /**
@@ -150,8 +48,8 @@ public class FoldingArm extends Arm {
      */
     private final int MAX_FOLDING;
     /**
-     * The angle that the arm folding starts from.
-     * 0 ticks will be considered equal to `INITIAL_ANGLE`.
+     * The angle that the arm folding starts from. 0 ticks will be considered
+     * equal to `INITIAL_ANGLE`.
      */
     private final double INITIAL_FOLDING_ANGLE;
     /**
@@ -163,10 +61,12 @@ public class FoldingArm extends Arm {
      * Instantiates an foldable arm
      *
      * @param motorSet      The motors and motor types.
-     * @param rotationRange The min rotation, max rotation, and ticks per degree.
+     * @param rotationRange The min rotation, max rotation, and ticks per
+     *                      degree.
      * @param foldingRange  The min extension and max extension.
      */
-    public FoldingArm(MotorSet motorSet, RotationRange rotationRange, FoldingRange foldingRange) {
+    public FoldingArm(MotorSet motorSet, RotationRange rotationRange,
+                      FoldingRange foldingRange) {
         super(motorSet.MOTORS);
 
         this.ROTATION_MOTOR = motorSet.ROTATION_MOTOR;
@@ -183,7 +83,7 @@ public class FoldingArm extends Arm {
         this.TICKS_PER_FOLDING_DEGREE = foldingRange.TICKS_PER_DEGREE;
 
         // Reset position to 0
-        for (DcMotor motor: MOTORS) {
+        for (DcMotor motor : MOTORS) {
             motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
@@ -219,11 +119,12 @@ public class FoldingArm extends Arm {
     }
 
     /**
-     * Rotate the arm with a set velocity.
-     * Stop the motor if it is out of bounds.
+     * Rotate the arm with a set velocity. Stop the motor if it is out of
+     * bounds.
      *
-     * @param direction The direction that the arm should rotate in.
-     *                  Positive rotates it up, negative rotates it down, zero stops the motor.
+     * @param direction The direction that the arm should rotate in. Positive
+     *                  rotates it up, negative rotates it down, zero stops the
+     *                  motor.
      */
     public void rotate(double direction) throws IllegalStateException {
         if (ROTATION_MOTOR.getCurrentPosition() > MAX_ROTATION || ROTATION_MOTOR.getCurrentPosition() < MIN_ROTATION) {
@@ -237,21 +138,24 @@ public class FoldingArm extends Arm {
     /**
      * Rotates the arm to a position specified in degrees.
      *
-     * @param degrees The position the arm moves to.
-     *                The arm's starting position is 0 degrees.
+     * @param degrees The position the arm moves to. The arm's starting position
+     *                is 0 degrees.
      */
     public void rotateToAngle(double degrees) {
         double targetDegrees = degrees - INITIAL_ROTATION_ANGLE;
-        int targetPosition = (int) -Math.round(targetDegrees * TICKS_PER_ROTATION_DEGREE);
+        int targetPosition =
+                (int) -Math.round(targetDegrees * TICKS_PER_ROTATION_DEGREE);
         // Keep the target position within acceptable bounds
-        targetPosition = Math.min(Math.max(targetPosition, MIN_ROTATION), MAX_ROTATION);
+        targetPosition = Math.min(Math.max(targetPosition, MIN_ROTATION),
+                MAX_ROTATION);
         ROTATION_MOTOR.setTargetPosition(targetPosition);
 
         /*
          * Calculate the direction that the arm will have to rotate.
          * Negative is down, positive is up
          */
-        int direction = (int) Math.signum(targetPosition - ROTATION_MOTOR.getCurrentPosition());
+        int direction =
+                (int) Math.signum(targetPosition - ROTATION_MOTOR.getCurrentPosition());
         ROTATION_MOTOR.setPower(direction * ROTATION_POWER);
 
         ROTATION_MOTOR.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -273,8 +177,8 @@ public class FoldingArm extends Arm {
     /**
      * Fold the arm with a given power.
      *
-     * @param direction The direction that the extension motor moves.
-     *                  Positive values fold the arm, negative values retract it.
+     * @param direction The direction that the extension motor moves. Positive
+     *                  values fold the arm, negative values retract it.
      */
     public void fold(double direction) throws IllegalStateException {
         if (FOLDING_MOTOR.getCurrentPosition() > MAX_FOLDING || FOLDING_MOTOR.getCurrentPosition() < MIN_FOLDING) {
@@ -292,12 +196,15 @@ public class FoldingArm extends Arm {
      */
     public void foldToAngle(double degrees) {
         double targetDegrees = degrees - INITIAL_FOLDING_ANGLE;
-        int targetPosition = (int) Math.round(targetDegrees * TICKS_PER_FOLDING_DEGREE);
+        int targetPosition =
+                (int) Math.round(targetDegrees * TICKS_PER_FOLDING_DEGREE);
         // Keep the target position within acceptable bounds
-        targetPosition = -Math.min(Math.max(targetPosition, MIN_FOLDING), MAX_FOLDING);
+        targetPosition = -Math.min(Math.max(targetPosition, MIN_FOLDING),
+                MAX_FOLDING);
         FOLDING_MOTOR.setTargetPosition(targetPosition);
 
-        int direction = (int) Math.signum(targetPosition - FOLDING_MOTOR.getCurrentPosition());
+        int direction =
+                (int) Math.signum(targetPosition - FOLDING_MOTOR.getCurrentPosition());
         FOLDING_MOTOR.setPower(direction * FOLDING_POWER);
 
         FOLDING_MOTOR.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -310,13 +217,119 @@ public class FoldingArm extends Arm {
      */
     public void foldToPosition(int targetPosition) {
         // Keep the target position within acceptable bounds
-        targetPosition = Math.min(Math.max(targetPosition, MIN_FOLDING), MAX_FOLDING);
+        targetPosition = Math.min(Math.max(targetPosition, MIN_FOLDING),
+                MAX_FOLDING);
         FOLDING_MOTOR.setTargetPosition(targetPosition);
 
         // Get the direction of turning.
-        int direction = (int) Math.signum(targetPosition - FOLDING_MOTOR.getCurrentPosition());
+        int direction =
+                (int) Math.signum(targetPosition - FOLDING_MOTOR.getCurrentPosition());
         FOLDING_MOTOR.setPower(direction * FOLDING_POWER);
 
         FOLDING_MOTOR.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    }
+
+    /**
+     * Passed into the {@code FoldingArm} constructor. Contains the motors and
+     * motor types.
+     */
+    public static class MotorSet {
+        private final HashSet<DcMotor> MOTORS;
+
+        // The motor that rotates the arm up and down.
+        private final DcMotor ROTATION_MOTOR;
+        // The motor that folds the arm.
+        private final DcMotor FOLDING_MOTOR;
+
+        public MotorSet(DcMotor rotationMotor, DcMotor foldingMotor) {
+            MOTORS = new HashSet<>();
+            MOTORS.add(rotationMotor);
+            MOTORS.add(foldingMotor);
+
+            ROTATION_MOTOR = rotationMotor;
+            FOLDING_MOTOR = foldingMotor;
+        }
+
+        public MotorSet() {
+            MOTORS = new HashSet<>();
+
+            ROTATION_MOTOR = null;
+            FOLDING_MOTOR = null;
+        }
+    }
+
+    /**
+     * Passed into the {@code FoldingArm} constructor. Contains the min
+     * rotation, max rotation, and ticks per degree.
+     */
+    public static class RotationRange {
+        /**
+         * The minimum rotation of the arm in ticks.
+         */
+        private final int MIN_ROTATION;
+        /**
+         * The maximum rotation of the arm in ticks.
+         */
+        private final int MAX_ROTATION;
+
+        /**
+         * The angle that the arm rotation starts from. 0.0 ticks will be
+         * considered equal to `INITIAL_ANGLE`.
+         */
+        private final double INITIAL_ANGLE;
+
+        /**
+         * How many ticks it takes to rotate the arm by one degree.
+         */
+        private final double TICKS_PER_DEGREE;
+
+        public RotationRange(int minRotation, int maxRotation,
+                             double ticksPerDegree) {
+            this(minRotation, maxRotation, 0, ticksPerDegree);
+        }
+
+        public RotationRange(int minRotation, int maxRotation,
+                             double initialAngle, double ticksPerDegree) {
+            this.MIN_ROTATION = minRotation;
+            this.MAX_ROTATION = maxRotation;
+            this.INITIAL_ANGLE = initialAngle;
+            this.TICKS_PER_DEGREE = ticksPerDegree;
+        }
+    }
+
+    /**
+     * Passed into the {@code FoldingArm} constructor. Contains the min folding,
+     * max folding.
+     */
+    public static class FoldingRange {
+        // The minimum folding of the arm in ticks.
+        private final int MIN_FOLDING;
+        // The maximum extension of the arm in ticks.
+        private final int MAX_FOLDING;
+        // How many ticks are in a degree.
+        private final double TICKS_PER_DEGREE;
+        /**
+         * The angle that the arm rotation starts from. 0 ticks will be
+         * considered equal to `INITIAL_ANGLE`.
+         */
+        private double INITIAL_ANGLE;
+
+        public FoldingRange(int minFolding, int maxFolding,
+                            double ticksPerDegree) {
+            this.MIN_FOLDING = minFolding;
+            this.MAX_FOLDING = maxFolding;
+
+            this.TICKS_PER_DEGREE = ticksPerDegree;
+        }
+
+        public FoldingRange(int minFolding, int maxFolding,
+                            double initialAngle, double ticksPerDegree) {
+            this.MIN_FOLDING = minFolding;
+            this.MAX_FOLDING = maxFolding;
+
+            this.INITIAL_ANGLE = initialAngle;
+
+            this.TICKS_PER_DEGREE = ticksPerDegree;
+        }
     }
 }

@@ -20,7 +20,9 @@ public class AutoConfig extends OpMode {
     /**
      * The directory that all the files are saved to.
      */
-    private static final String DIRECTORY = Environment.getExternalStorageDirectory().getAbsolutePath() + "/ftc/";
+    private static final String DIRECTORY =
+            Environment.getExternalStorageDirectory().getAbsolutePath() +
+                    "/ftc/";
 
     /**
      * Name of the config file, which is inside the directory specified by
@@ -37,13 +39,15 @@ public class AutoConfig extends OpMode {
      * it. Prints an error message if it fails.
      */
     private void printRobotPosition() {
-        try (BufferedReader reader = new BufferedReader(new FileReader(CONFIG_FILE))) {
+        try (BufferedReader reader =
+                     new BufferedReader(new FileReader(CONFIG_FILE))) {
             // Read first line.
             String data = reader.readLine();
             telemetry.addData("Current position", data);
 
         } catch (IOException e) {
-            telemetry.addLine("ERROR: FAILED TO READ ROBOT POSITION FROM STORAGE FILE!");
+            telemetry.addLine("ERROR: FAILED TO READ ROBOT POSITION FROM " +
+                    "STORAGE FILE!");
         }
     }
 
@@ -76,19 +80,23 @@ public class AutoConfig extends OpMode {
         String positionString = null;
         if (gamepad1.y || gamepad2.y) {
             // Orange button
-            positionString = AllianceColor.RED.name() + "," + TeamSide.NEAR.name();
+            positionString =
+                    AllianceColor.RED.name() + "," + TeamSide.NEAR.name();
 
         } else if (gamepad1.b || gamepad2.b) {
             // Red button
-            positionString = AllianceColor.RED.name() + "," + TeamSide.FAR.name();
+            positionString =
+                    AllianceColor.RED.name() + "," + TeamSide.FAR.name();
 
         } else if (gamepad1.a || gamepad2.a) {
             // Green button
-            positionString = AllianceColor.BLUE.name() + "," + TeamSide.NEAR.name();
+            positionString =
+                    AllianceColor.BLUE.name() + "," + TeamSide.NEAR.name();
 
         } else if (gamepad1.x || gamepad2.x) {
             // Blue button
-            positionString = AllianceColor.BLUE.name() + "," + TeamSide.FAR.name();
+            positionString =
+                    AllianceColor.BLUE.name() + "," + TeamSide.FAR.name();
         }
 
         // Do nothing if the driver didn't press any buttons.
@@ -101,7 +109,8 @@ public class AutoConfig extends OpMode {
             writer.write(positionString);
 
         } catch (IOException e) {
-            telemetry.addLine("ERROR: FAILED TO WRITE ROBOT POSITION TO STORAGE FILE!");
+            telemetry.addLine("ERROR: FAILED TO WRITE ROBOT POSITION TO " +
+                    "STORAGE FILE!");
             telemetry.addLine(e.toString());
         }
     }
