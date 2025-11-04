@@ -144,15 +144,26 @@ public class DriverMode extends CustomLinearOp {
         /* Intake control (Gamepad 2)
          *
          * Use the left trigger on gamepad2 to control the intake.  When the
-         * trigger is held down, run the intake at full power; when the
+         * left trigger is held down, run the intake at full power; when the
          * trigger is released, stop the intake.  This allows drivers to
          * toggle the intake on demand rather than running continuously.
+         * The opposite should happen when the right trigger is held down
          */
         if (intakeMotor != null) {
             // Any non‑zero trigger value will run the intake.  Adjust the
             // threshold if you want partial trigger pull to be ignored.
             if (gamepad2.left_trigger > 0.05) {
                 intakeMotor.setPower(1.0); // full speed forward
+            } else {
+                intakeMotor.setPower(0.0); // stop intake
+            }
+        }
+
+        if (intakeMotor != null) {
+            // Any non‑zero trigger value will run the intake.  Adjust the
+            // threshold if you want partial trigger pull to be ignored.
+            if (gamepad2.right_trigger > 0.05) {
+                intakeMotor.setPower(-1.0); // full speed backward
             } else {
                 intakeMotor.setPower(0.0); // stop intake
             }
