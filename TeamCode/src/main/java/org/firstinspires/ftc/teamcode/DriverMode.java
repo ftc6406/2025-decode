@@ -66,8 +66,8 @@ public class DriverMode extends CustomLinearOp {
         // Compute raw inputs from gamepad controls.  Right stick Y controls
         // forward/back (invert so up is positive); left stick X controls
         // turning; triggers control strafing.
-        double rawStrafe  = (gamepad1.left_trigger > 0) ? -gamepad1.left_trigger : gamepad1.right_trigger;
-        double rawForward = -gamepad1.right_stick_y;  // invert so pushing up moves forward
+        double rawStrafe  = (gamepad1.left_trigger > 0) ? gamepad1.left_trigger : gamepad1.right_trigger;
+        double rawForward = gamepad1.right_stick_y;  // invert so pushing up moves forward
         double rawTurn    = gamepad1.left_stick_x;
 
         // Apply the deadband and sensitivity scaling.  This prevents
@@ -80,7 +80,7 @@ public class DriverMode extends CustomLinearOp {
         // robot movement.  Without this adjustment, pushing the stick
         // forward caused the robot to move backward due to motor direction
         // assignments in {@link org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels}.
-        forward = -forward;
+        forward = forward;
 
         // Stop the wheels completely if all inputs are within the deadband.
         if (strafe == 0.0 && forward == 0.0 && turn == 0.0) {

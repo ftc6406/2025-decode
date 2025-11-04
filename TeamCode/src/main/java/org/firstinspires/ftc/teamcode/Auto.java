@@ -13,9 +13,9 @@ public class Auto extends CustomLinearOp {
     public void runOpMode() {
         super.runOpMode();
 
-        new TrajectoryBuilder(new Pose2d(0, 0, 0))
-                .forward(40)
-                .build();
+//        new TrajectoryBuilder(new Pose2d(0, 0, 0))
+//                .forward(40)
+//                .build();
 
         MECANUM_DRIVE.actionBuilder(
                 new Pose2d(0, 0, 0)
