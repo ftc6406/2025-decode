@@ -19,7 +19,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
  * per second and RPM.  We also estimate the linear tip speed by assuming the
  * 5 mm hex output has a diameter of approximately 5 mm (0.005 m).
  */
-@TeleOp(name = "CoreHexMotorSpeedTest")
+@TeleOp(name = "UltraPlanetarySpeedTest")
 public class UltraPlanetarySpeedTest extends LinearOpMode {
     /**
      * Counts per output shaft revolution for the Core Hex motor.  The motor
