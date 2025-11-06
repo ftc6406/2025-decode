@@ -153,7 +153,7 @@ public class DriverMode extends CustomLinearOp {
             // Any non‑zero trigger value will run the intake.  Adjust the
             // threshold if you want partial trigger pull to be ignored.
             if (gamepad2.left_trigger > 0.05) {
-                intakeMotor.setPower(1.0); // full speed forward
+                intakeMotor.setPower(0.9); // full speed forward
             } else {
                 intakeMotor.setPower(0.0); // stop intake
             }
@@ -163,7 +163,7 @@ public class DriverMode extends CustomLinearOp {
             // Any non‑zero trigger value will run the intake.  Adjust the
             // threshold if you want partial trigger pull to be ignored.
             if (gamepad2.right_trigger > 0.05) {
-                intakeMotor.setPower(-1.0); // full speed backward
+                intakeMotor.setPower(-0.9); // full speed backward
             } else {
                 intakeMotor.setPower(0.0); // stop intake
             }
