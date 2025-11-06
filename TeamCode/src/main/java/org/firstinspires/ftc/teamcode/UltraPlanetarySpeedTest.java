@@ -27,7 +27,7 @@ public class UltraPlanetarySpeedTest extends LinearOpMode {
      * revolution and a 72:1 gearbox, giving 4 × 72 = 288 counts per output
      * revolution【629472301279711†L219-L231】.
      */
-    private static final double COUNTS_PER_REV = 28.0;
+    private static final double COUNTS_PER_REV = 140;
 
     /**
      * Approximate diameter of the Core Hex motor’s 5 mm hex output, in meters.
