@@ -19,7 +19,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
  * per second and RPM.  We also estimate the linear tip speed by assuming the
  * 5 mm hex output has a diameter of approximately 5 mm (0.005 m).
  */
-@TeleOp(name = "CoreHexMotorSpeedTest")
+@TeleOp(name = "UltraPlanetarySpeedTest")
 public class UltraPlanetarySpeedTest extends LinearOpMode {
     /**
      * Counts per output shaft revolution for the Core Hex motor.  The motor
@@ -47,7 +47,7 @@ public class UltraPlanetarySpeedTest extends LinearOpMode {
     public void runOpMode() {
         // Fetch the Core Hex motor from the hardware map.  The name
         // "coreHexMotor" must match the configuration in the Control Hub.
-        DcMotorEx motor = hardwareMap.get(DcMotorEx.class, "coreHexMotor");
+        DcMotorEx motor = hardwareMap.get(DcMotorEx.class, "UltraPlanetaryMotor");
 
         // Set motor direction.  Use REVERSE if the motor spins backwards.
         motor.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -60,7 +60,7 @@ public class UltraPlanetarySpeedTest extends LinearOpMode {
         // second【594545095337415†L320-L322】.
         motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        telemetry.addLine("Press start to run the Core Hex motor at full " +
+        telemetry.addLine("Press start to run the planetary motor at full " +
                 "speed.");
         telemetry.update();
         waitForStart();
