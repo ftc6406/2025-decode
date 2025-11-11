@@ -1,7 +1,8 @@
 package org.firstinspires.ftc.teamcode.hardwareSystems;
 
 public enum MotorType {
-    TETRIX_TORQUENADO(1440);
+    TETRIX_TORQUENADO(1440),
+    REVHDHEX40to1(1120);
 
     /**
      * The number of ticks it takes for a full rotation.
