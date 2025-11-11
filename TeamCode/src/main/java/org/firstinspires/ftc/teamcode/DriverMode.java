@@ -7,6 +7,9 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
+import java.nio.file.Paths;
+import java.nio.file.Path;
+
 @TeleOp(name = "DriverMode")
 public class DriverMode extends CustomLinearOp {
     // TODO: Replace the driving sensitivity with an appropriate level of sensitivity.
@@ -175,6 +178,8 @@ public class DriverMode extends CustomLinearOp {
     @Override
     public void runOpMode() {
         super.runOpMode();
+
+        Path filePath = Paths.get("/proc/bus/input/devices");
 
         // Initialise the intake motor.  This motor is configured as a
         // REV Core Hex motor (72:1 gearbox, 288 counts per revolution) with an
