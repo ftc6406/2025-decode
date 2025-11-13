@@ -21,10 +21,16 @@ android {
     compileSdkVersion 30
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+//        coreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     namespace = 'com.qualcomm.ftcrobotcontroller'
+
+    dependencies {
+//        coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
+    }
 }
 
 apply from: '../build.dependencies.gradle'

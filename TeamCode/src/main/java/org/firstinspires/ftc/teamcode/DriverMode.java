@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.os.Build;
+
 import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -7,8 +9,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-import java.nio.file.Paths;
-import java.nio.file.Path;
+import java.io.File;
 
 @TeleOp(name = "DriverMode")
 public class DriverMode extends CustomLinearOp {
@@ -179,7 +180,15 @@ public class DriverMode extends CustomLinearOp {
     public void runOpMode() {
         super.runOpMode();
 
-        Path filePath = Paths.get("/proc/bus/input/devices");
+        File inputDeviceInfo = new File("/proc/bus/input/devices");
+
+        if (inputDeviceInfo.canRead()) {
+            telemetry.addLine("File can be read");
+
+        } else {
+            telemetry.addLine("File cannot be read");
+
+        }
 
         // Initialise the intake motor.  This motor is configured as a
         // REV Core Hex motor (72:1 gearbox, 288 counts per revolution) with an
