@@ -66,9 +66,17 @@ public class DriverMode extends CustomLinearOp {
         // Compute raw inputs from gamepad controls.  Right stick Y controls
         // forward/back (invert so up is positive); left stick X controls
         // turning; triggers control strafing.
-        double rawStrafe  = (gamepad1.left_trigger > 0) ? gamepad1.left_trigger : gamepad1.right_trigger;
-        double rawForward = gamepad1.right_stick_y;  // invert so pushing up moves forward
+        // Compute raw inputs from gamepad controls.  Right stick Y controls
+        // forward/back; left stick X controls turning; triggers control
+        // strafing.  Use the difference between right and left triggers
+        // so that each trigger contributes in the proper direction: a
+        // positive right trigger strafes right and a positive left trigger
+        // strafes left.  Invert the forward axis so pushing up on the
+        // joystick results in positive forward motion (the FTC SDK uses
+        // negative Y for forward on the joystick).
+        double rawForward = -gamepad1.right_stick_y;
         double rawTurn    = gamepad1.left_stick_x;
+        double rawStrafe  = gamepad1.right_trigger - gamepad1.left_trigger;
 
         // Apply the deadband and sensitivity scaling.  This prevents
         // unintentional drift when sticks are near center.
@@ -76,11 +84,10 @@ public class DriverMode extends CustomLinearOp {
         double forward = applyDeadband(rawForward) * DRIVING_SENSITIVITY;
         double turn    = applyDeadband(rawTurn)    * DRIVING_SENSITIVITY;
 
-        // Invert the forward component to correct the observed inversion of
-        // robot movement.  Without this adjustment, pushing the stick
-        // forward caused the robot to move backward due to motor direction
-        // assignments in {@link org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels}.
-        forward = forward;
+        // Note: We no longer invert the forward value here because we
+        // explicitly negated the raw value above.  Forward motion on
+        // gamepad1.right_stick_y now correctly maps to positive forward
+        // robot motion.
 
         // Stop the wheels completely if all inputs are within the deadband.
         if (strafe == 0.0 && forward == 0.0 && turn == 0.0) {
@@ -150,22 +157,16 @@ public class DriverMode extends CustomLinearOp {
          * The opposite should happen when the right trigger is held down
          */
         if (intakeMotor != null) {
-            // Any non‑zero trigger value will run the intake.  Adjust the
+            // The left trigger on gamepad2 runs the intake forward; the
+            // right trigger runs it in reverse.  If neither trigger is
+            // pressed beyond the threshold, stop the intake.  Adjust the
             // threshold if you want partial trigger pull to be ignored.
             if (gamepad2.left_trigger > 0.05) {
-                intakeMotor.setPower(0.9); // full speed forward
+                intakeMotor.setPower(1.0);
+            } else if (gamepad2.right_trigger > 0.05) {
+                intakeMotor.setPower(-1.0);
             } else {
-                intakeMotor.setPower(0.0); // stop intake
-            }
-        }
-
-        if (intakeMotor != null) {
-            // Any non‑zero trigger value will run the intake.  Adjust the
-            // threshold if you want partial trigger pull to be ignored.
-            if (gamepad2.right_trigger > 0.05) {
-                intakeMotor.setPower(-0.9); // full speed backward
-            } else {
-                intakeMotor.setPower(0.0); // stop intake
+                intakeMotor.setPower(0.0);
             }
         }
 

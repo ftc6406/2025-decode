@@ -217,7 +217,16 @@ public class CustomLinearOp extends LinearOpMode {
             // wheel circumference is 4 inches in diameter multiplied by π.
             double wheelCircumference = 4.0 * Math.PI;
             double gearRatio = 1.0;
-            double ticksPerInch = org.firstinspires.ftc.teamcode.hardwareSystems.MotorType.TETRIX_TORQUENADO.getTicksPerRotation()
+            // Compute ticks per inch using the UltraPlanetary motor.  The
+            // REV UltraPlanetary gearbox encoder produces 560 counts per
+            // output revolution when built with a 20:1 gear ratio (HD Hex
+            // motor with a 4:1 and 5:1 cartridge).  See
+            // MotorType.REV_ULTRA_PLANETARY for details.  If you use a
+            // different gear stack, update REV_ULTRA_PLANETARY in
+            // MotorType accordingly.  A gear ratio of 1.0 is used here
+            // because the encoder count already reflects the final output
+            // rotation.
+            double ticksPerInch = org.firstinspires.ftc.teamcode.hardwareSystems.MotorType.REV_ULTRA_PLANETARY.getTicksPerRotation()
                     * gearRatio / wheelCircumference;
             // Approximate distances between wheels.  Adjust as necessary if
             // your robot's chassis dimensions differ.
@@ -365,9 +374,9 @@ public class CustomLinearOp extends LinearOpMode {
          */
         int cameraMonitorViewId =
                 hardwareMap.appContext.getResources().getIdentifier(
-                "cameraMonitorViewId", "id",
+                        "cameraMonitorViewId", "id",
                         hardwareMap.appContext.getPackageName()
-        );
+                );
         telemetry.addData("cameraMonitorViewId", cameraMonitorViewId);
         telemetry.update();
         initWebcam(cameraMonitorViewId);
