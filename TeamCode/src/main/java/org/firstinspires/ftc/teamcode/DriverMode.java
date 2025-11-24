@@ -37,6 +37,52 @@ public class DriverMode extends CustomLinearOp {
         return Math.abs(value) < DEADBAND ? 0.0 : value;
     }
 
+    /**
+     * Deadband for trigger and stick drift compensation.  Values within this
+     * threshold after offset subtraction are treated as zero.  Increase this
+     * value if your gamepad has larger drift (e.g. 0.3).
+     */
+    private static final double OFFSET_DEADBAND = 0.07;
+
+    /**
+     * Measured resting offsets for the driver controls.  These values are
+     * sampled during the init phase (before the match begins) while the
+     * driver holds all sticks and triggers at their neutral positions.  By
+     * subtracting these offsets from the raw inputs each loop, we ensure
+     * that small bias or drift does not cause the robot to creep when
+     * released.
+     */
+    private double verticalOffset = 0.0;
+    private double horizontalOffset = 0.0;
+    private double pivotOffset = 0.0;
+
+    /**
+     * Additional subsystems for driver control.  The lazy Susan motor
+     * rotates the camera and launcher platform; the launcher motor spins
+     * the flywheel to shoot game pieces.  Both motors are initialised in
+     * runOpMode() using names defined in the hardware configuration.
+     */
+    private DcMotorEx lazySusanMotor;
+    private DcMotorEx launcherMotor;
+
+    /**
+     * Current shooter power.  Drivers can switch between two preset
+     * powers (e.g. mid‑range and long‑range) using D‑pad buttons on
+     * gamepad 2.  When the launcher is enabled via the X button, this
+     * power is applied to the launcher motor; otherwise the power is zero.
+     */
+    private double shooterPower = 0.8; // default mid‑range
+    private final double SHOOTER_POWER_LOW = 0.7;
+    private final double SHOOTER_POWER_HIGH = 1.0;
+    private boolean launcherEnabled = false;
+
+    /**
+     * Flag indicating whether auto‑aim is engaged.  When true, the
+     * driver’s strafe and turn inputs are overridden by values computed
+     * from AprilTag bearing and yaw to align the robot with the target.
+     */
+    private boolean autoAimEnabled = false;
+
     private static int cameraMonitorViewId;
 
     /**
@@ -58,94 +104,84 @@ public class DriverMode extends CustomLinearOp {
 
         /* Wheel Controls */
         /*
-         * Drive robot based on joystick input from gamepad1.
-         * Right stick Y controls forward/backward motion.
-         * Left stick X controls turning (pivoting in place).
-         * Triggers control strafing: hold the right trigger (ZR) to strafe right,
-         * hold the left trigger (ZL) to strafe left.  If both triggers are
-         * pressed, the left trigger (strafe left) takes precedence.
-         *
-         * This mixing logic is adapted from last season's successful driver code.
-         * It computes individual wheel powers based on three components:
-         *   - vertical (forward/back) = -gamepad1.right_stick_y
-         *   - pivot (turn) = gamepad1.left_stick_x
-         *   - horizontal (strafe) = (right_trigger - left_trigger)
-         * The left motors are reversed in the hardware configuration.  The
-         * resulting pattern ensures that when strafing left the left wheels move
-         * toward each other and the right wheels move away from each other, and
-         * vice versa for strafing right.  Normal driving (forward/back/turn) is
-         * preserved.  A deadband is applied to each input to suppress small
-         * joystick drift.
+         * Drive robot based on joystick input from gamepad1
+         * Right stick moves the robot forwards and backwards and turns it.
+         * The triggers control strafing.  A positive left trigger causes
+         * leftward strafe; a positive right trigger causes rightward strafe.
          */
+        // Compute raw inputs from gamepad controls.  Subtract the offsets
+        // measured during init so that small bias from imperfectly centred
+        // sticks/triggers does not cause the robot to move by itself.  Then
+        // apply a deadband to each value to clamp tiny drift to zero.
+        //
+        // Forward/backward comes from the right stick Y-axis (up = forward).
+        // Negate the value so pushing forward yields positive.  Subtract
+        // verticalOffset measured during init.
+        double verticalRaw = -gamepad1.right_stick_y - verticalOffset;
 
-        // Compute raw components from gamepad1.  Forward/back is on the
-        // right stick Y axis (push up for forward).  Turning uses the left
-        // stick X axis (right is clockwise).  Strafe uses the difference
-        // between triggers: right trigger gives positive (right strafe), left
-        // trigger gives negative (left strafe).  If both triggers are pressed,
-        // the left trigger will dominate due to subtraction.
-        double rawVertical = -gamepad1.right_stick_y;
-        double rawPivot    = gamepad1.left_stick_x;
-        double rawHorizontal;
-        if (gamepad1.left_trigger > 0) {
-            // Left trigger pressed: negative strafe (left)
-            rawHorizontal = -gamepad1.left_trigger;
-        } else {
-            // Else use right trigger: positive strafe (right)
-            rawHorizontal = gamepad1.right_trigger;
-        }
+        // Turning (pivot) comes from the left stick X-axis.  Subtract
+        // pivotOffset measured during init.  Positive values produce
+        // clockwise rotation.
+        double pivotRaw = gamepad1.left_stick_x - pivotOffset;
 
-        // Apply deadband and sensitivity scaling.  This prevents the robot
-        // from creeping when the sticks are near centre and scales the
-        // response for driver comfort.  Note: do not invert the signs here.
-        double vertical   = applyDeadband(rawVertical)   * DRIVING_SENSITIVITY;
-        double pivot      = applyDeadband(rawPivot)      * DRIVING_SENSITIVITY;
-        double horizontal = applyDeadband(rawHorizontal) * DRIVING_SENSITIVITY;
+        // Strafing (horizontal) comes from the triggers: right trigger (ZR)
+        // minus left trigger (ZL).  Subtract horizontalOffset measured during
+        // init.  Positive values strafe right, negative values strafe left.
+        double horizontalRaw = (gamepad1.right_trigger - gamepad1.left_trigger) - horizontalOffset;
 
-        // If all inputs are within the deadband, stop the robot.
+        // Apply deadband to each input to eliminate small stick drift and
+        // unintended motion.  Scale the inputs by the driving sensitivity.
+        double vertical   = applyDeadband(verticalRaw)   * DRIVING_SENSITIVITY;
+        double horizontal = applyDeadband(horizontalRaw) * DRIVING_SENSITIVITY;
+        double pivot      = applyDeadband(pivotRaw)      * DRIVING_SENSITIVITY;
+
+        double frontRightPower = (-pivot + (vertical - horizontal));
+        double backRightPower  = (-pivot + vertical + horizontal);
+        double frontLeftPower  = (pivot + vertical + horizontal);
+        double backLeftPower   = (pivot + (vertical - horizontal));
+
+        // If all inputs are within the deadband, stop all four drive motors.
+        // This prevents the robot from creeping when the sticks return to
+        // centre.  By writing zero to each motor directly, we avoid any
+        // lingering motion from previous commands.  Note that we do not
+        // attempt to drive using MECANUM_DRIVE here; direct motor control
+        // provides more predictable behaviour with the old mixing logic.
         if (vertical == 0.0 && horizontal == 0.0 && pivot == 0.0) {
             if (WHEELS != null) {
-                // Stop motors directly to avoid drift.
-                if (WHEELS instanceof org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) {
-                    org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels mech =
-                            (org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) WHEELS;
-                    mech.getFrontLeftMotor().setPower(0);
-                    mech.getFrontRightMotor().setPower(0);
-                    mech.getBackLeftMotor().setPower(0);
-                    mech.getBackRightMotor().setPower(0);
-                } else {
-                    // Fallback: use generic drive if not a MecanumWheels instance.
-                    WHEELS.drive(0, 0, 0);
-                }
+                // Access the individual motors and set their powers to zero.
+                org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels mech =
+                        (org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) WHEELS;
+                mech.getFrontLeftMotor().setPower(0);
+                mech.getFrontRightMotor().setPower(0);
+                mech.getBackLeftMotor().setPower(0);
+                mech.getBackRightMotor().setPower(0);
             } else if (MECANUM_DRIVE != null) {
+                // For Road Runner fallback, send zero drive powers.
                 MECANUM_DRIVE.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
             }
         } else {
-            // Compute wheel powers using old participant's formula adapted to
-            // our control mapping.  vertical = forward/back, pivot = turn,
-            // horizontal = strafe.  The left motors are reversed in the
-            // hardware configuration so we use the same signs as before.
-            double frontRightPower = (-pivot + (vertical - horizontal));
-            double backRightPower  = (-pivot + vertical + horizontal);
-            double frontLeftPower  = (pivot + vertical + horizontal);
-            double backLeftPower   = (pivot + (vertical - horizontal));
+            // Compute wheel powers using the same equations from the old
+            // participant’s code.  These equations assume that the left
+            // motors have their directions set to REVERSE and the right
+            // motors are set to FORWARD.  See the initialisation in
+            // CustomLinearOp.initWheels().
+            frontRightPower = (-pivot + (vertical - horizontal));
+            backRightPower  = (-pivot + vertical + horizontal);
+            frontLeftPower  = (pivot + vertical + horizontal);
+            backLeftPower   = (pivot + (vertical - horizontal));
 
-            // Normalize the powers so no value exceeds |1|.
-            double max = Math.max(
-                    Math.max(Math.abs(frontLeftPower), Math.abs(frontRightPower)),
-                    Math.max(Math.abs(backLeftPower), Math.abs(backRightPower))
-            );
-            if (max > 1.0) {
-                frontLeftPower  /= max;
-                frontRightPower /= max;
-                backLeftPower   /= max;
-                backRightPower  /= max;
-            }
+            // Normalize the powers so that no motor command exceeds ±1.0.
+            double maxMagnitude = Math.max(1.0, Math.max(Math.abs(frontLeftPower),
+                    Math.max(Math.abs(frontRightPower), Math.max(Math.abs(backLeftPower), Math.abs(backRightPower)))));
+            frontLeftPower  /= maxMagnitude;
+            frontRightPower /= maxMagnitude;
+            backLeftPower   /= maxMagnitude;
+            backRightPower  /= maxMagnitude;
 
-            // Apply the computed powers to the motors.  If WHEELS is a
-            // MecanumWheels instance, set each motor directly; otherwise
-            // construct a PoseVelocity2d for Road Runner using our components.
-            if (WHEELS != null && WHEELS instanceof org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) {
+            // Apply the powers to the individual motors.  By setting the
+            // powers directly we bypass MecanumWheels.drive() and avoid any
+            // inconsistencies arising from mismatched mixing formulas.
+            if (WHEELS != null) {
                 org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels mech =
                         (org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) WHEELS;
                 mech.getFrontLeftMotor().setPower(frontLeftPower);
@@ -153,27 +189,30 @@ public class DriverMode extends CustomLinearOp {
                 mech.getBackLeftMotor().setPower(backLeftPower);
                 mech.getBackRightMotor().setPower(backRightPower);
             } else if (MECANUM_DRIVE != null) {
-                // Convert our vertical/pivot/horizontal into Road Runner's
-                // coordinate system: +y forward, +x right.  Our vertical is
-                // positive when pushing stick up (forward), so no inversion is
-                // needed.  Horizontal is positive for right strafe.  Pivot is
-                // positive for clockwise rotation, which matches Road Runner.
+                // For Road Runner fallback, convert our directional commands to the
+                // +y forward/+x right convention.  Note that vertical controls
+                // forward/backward; horizontal controls strafe; pivot controls
+                // rotation.  The forward value must be negated because
+                // PoseVelocity2d expects +y forward.
                 PoseVelocity2d velocity = new PoseVelocity2d(
-                        new Vector2d(horizontal, vertical),
+                        new Vector2d(horizontal, -vertical),
                         pivot
                 );
                 MECANUM_DRIVE.setDrivePowers(velocity);
             }
+        }
 
-            // Telemetry: output wheel powers when available.  This helps
-            // diagnose issues with strafe direction.  Only show when using
-            // MecanumWheels to avoid clutter with Road Runner.
-            if (WHEELS != null && WHEELS instanceof org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) {
-                telemetry.addData("Front left wheel power",  frontLeftPower);
-                telemetry.addData("Front right wheel power", frontRightPower);
-                telemetry.addData("Back left wheel power",   backLeftPower);
-                telemetry.addData("Back right wheel power",  backRightPower);
-            }
+        // Telemetry: report the raw and processed inputs as well as the
+        // computed motor powers.  This aids in diagnosing drift or
+        // inversion issues when testing on the field.
+        telemetry.addData("Vertical/raw", "%5.2f / %5.2f", vertical, verticalRaw);
+        telemetry.addData("Horizontal/raw", "%5.2f / %5.2f", horizontal, horizontalRaw);
+        telemetry.addData("Pivot/raw", "%5.2f / %5.2f", pivot, pivotRaw);
+        if (WHEELS != null ) {
+            telemetry.addData("Front left wheel power",  frontLeftPower);
+            telemetry.addData("Front right wheel power", frontRightPower);
+            telemetry.addData("Back left wheel power",   backLeftPower);
+            telemetry.addData("Back right wheel power",  backRightPower);
         }
 
         /* Webcam controls */
@@ -225,6 +264,71 @@ public class DriverMode extends CustomLinearOp {
     @Override
     public void runOpMode() {
         super.runOpMode();
+
+        // -----------------------------------------------------------------
+        // Calibrate driver control offsets.  Ask the driver to release all
+        // sticks and triggers during the init period.  Sample the raw
+        // values over a brief interval to compute average offsets.  These
+        // offsets are subtracted from the raw inputs each loop to cancel
+        // out any bias caused by imperfect centring of the controls.
+        // -----------------------------------------------------------------
+        telemetry.addLine("Calibrating controls... release sticks/triggers");
+        telemetry.update();
+        long sampleEnd = System.currentTimeMillis() + 500; // sample for 0.5 s
+        double vSum = 0.0;
+        double hSum = 0.0;
+        double pSum = 0.0;
+        int samples = 0;
+        while (!isStarted() && !isStopRequested() && System.currentTimeMillis() < sampleEnd) {
+            // Sample the raw inputs using the same axes used in runLoop.
+            // Use the same conventions as runLoop: negate right stick Y for forward,
+            // and use the difference of triggers for strafe.  Do not apply
+            // deadband here; we want the true rest position.
+            double vRaw = -gamepad1.right_stick_y;
+            double pRaw = gamepad1.left_stick_x;
+            double hRaw = gamepad1.right_trigger - gamepad1.left_trigger;
+
+            vSum += vRaw;
+            hSum += hRaw;
+            pSum += pRaw;
+            samples++;
+            sleep(10);
+        }
+        if (samples > 0) {
+            verticalOffset = vSum / samples;
+            horizontalOffset = hSum / samples;
+            pivotOffset = pSum / samples;
+        }
+        telemetry.addData("Control offsets", "V=%.2f H=%.2f P=%.2f", verticalOffset, horizontalOffset, pivotOffset);
+        telemetry.update();
+
+        // Initialise additional subsystem motors: lazy Susan and launcher.  Both
+        // are DcMotorEx so we can access advanced functions if needed.  If
+        // either motor is not found, report a warning and continue; null
+        // checks in runLoop() will prevent NullPointerExceptions.
+        try {
+            lazySusanMotor = hardwareMap.get(DcMotorEx.class, "lazySusanMotor");
+            lazySusanMotor.setDirection(DcMotorSimple.Direction.FORWARD);
+            lazySusanMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            lazySusanMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            lazySusanMotor.setPower(0.0);
+            telemetry.addLine("Lazy Susan motor initialised");
+        } catch (Exception e) {
+            telemetry.addLine("WARNING: Lazy Susan motor not found");
+        }
+        try {
+            launcherMotor = hardwareMap.get(DcMotorEx.class, "launcherMotor");
+            // The launcher spins counter‑clockwise when viewed from the front
+            // of the robot; set direction accordingly.  Reverse if needed.
+            launcherMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+            launcherMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            launcherMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+            launcherMotor.setPower(0.0);
+            telemetry.addLine("Launcher motor initialised");
+        } catch (Exception e) {
+            telemetry.addLine("WARNING: Launcher motor not found");
+        }
+
 
         // Initialise the intake motor.  This motor is configured as a
         // REV Core Hex motor (72:1 gearbox, 288 counts per revolution) with an
