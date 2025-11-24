@@ -58,72 +58,121 @@ public class DriverMode extends CustomLinearOp {
 
         /* Wheel Controls */
         /*
-         * Drive robot based on joystick input from gamepad1
-         * Right stick moves the robot forwards and backwards and turns it.
-         * The triggers control strafing.  A positive left trigger causes
-         * leftward strafe; a positive right trigger causes rightward strafe.
+         * Drive robot based on joystick input from gamepad1.
+         * Right stick Y controls forward/backward motion.
+         * Left stick X controls turning (pivoting in place).
+         * Triggers control strafing: hold the right trigger (ZR) to strafe right,
+         * hold the left trigger (ZL) to strafe left.  If both triggers are
+         * pressed, the left trigger (strafe left) takes precedence.
+         *
+         * This mixing logic is adapted from last season's successful driver code.
+         * It computes individual wheel powers based on three components:
+         *   - vertical (forward/back) = -gamepad1.right_stick_y
+         *   - pivot (turn) = gamepad1.left_stick_x
+         *   - horizontal (strafe) = (right_trigger - left_trigger)
+         * The left motors are reversed in the hardware configuration.  The
+         * resulting pattern ensures that when strafing left the left wheels move
+         * toward each other and the right wheels move away from each other, and
+         * vice versa for strafing right.  Normal driving (forward/back/turn) is
+         * preserved.  A deadband is applied to each input to suppress small
+         * joystick drift.
          */
-        // Compute raw inputs from gamepad controls.  Right stick Y controls
-        // forward/back (invert so up is positive); left stick X controls
-        // turning; triggers control strafing.
-        // Compute raw inputs from gamepad controls.  Right stick Y controls
-        // forward/back; left stick X controls turning; triggers control
-        // strafing.  Use the difference between right and left triggers
-        // so that each trigger contributes in the proper direction: a
-        // positive right trigger strafes right and a positive left trigger
-        // strafes left.  Invert the forward axis so pushing up on the
-        // joystick results in positive forward motion (the FTC SDK uses
-        // negative Y for forward on the joystick).
-        double rawForward = -gamepad1.right_stick_y;
-        double rawTurn    = gamepad1.left_stick_x;
-        double rawStrafe  = gamepad1.right_trigger - gamepad1.left_trigger;
 
-        // Apply the deadband and sensitivity scaling.  This prevents
-        // unintentional drift when sticks are near center.
-        double strafe  = applyDeadband(rawStrafe)  * DRIVING_SENSITIVITY;
-        double forward = applyDeadband(rawForward) * DRIVING_SENSITIVITY;
-        double turn    = applyDeadband(rawTurn)    * DRIVING_SENSITIVITY;
+        // Compute raw components from gamepad1.  Forward/back is on the
+        // right stick Y axis (push up for forward).  Turning uses the left
+        // stick X axis (right is clockwise).  Strafe uses the difference
+        // between triggers: right trigger gives positive (right strafe), left
+        // trigger gives negative (left strafe).  If both triggers are pressed,
+        // the left trigger will dominate due to subtraction.
+        double rawVertical = -gamepad1.right_stick_y;
+        double rawPivot    = gamepad1.left_stick_x;
+        double rawHorizontal;
+        if (gamepad1.left_trigger > 0) {
+            // Left trigger pressed: negative strafe (left)
+            rawHorizontal = -gamepad1.left_trigger;
+        } else {
+            // Else use right trigger: positive strafe (right)
+            rawHorizontal = gamepad1.right_trigger;
+        }
 
-        // Note: We no longer invert the forward value here because we
-        // explicitly negated the raw value above.  Forward motion on
-        // gamepad1.right_stick_y now correctly maps to positive forward
-        // robot motion.
+        // Apply deadband and sensitivity scaling.  This prevents the robot
+        // from creeping when the sticks are near centre and scales the
+        // response for driver comfort.  Note: do not invert the signs here.
+        double vertical   = applyDeadband(rawVertical)   * DRIVING_SENSITIVITY;
+        double pivot      = applyDeadband(rawPivot)      * DRIVING_SENSITIVITY;
+        double horizontal = applyDeadband(rawHorizontal) * DRIVING_SENSITIVITY;
 
-        // Stop the wheels completely if all inputs are within the deadband.
-        if (strafe == 0.0 && forward == 0.0 && turn == 0.0) {
+        // If all inputs are within the deadband, stop the robot.
+        if (vertical == 0.0 && horizontal == 0.0 && pivot == 0.0) {
             if (WHEELS != null) {
-                WHEELS.drive(0, 0, 0);
+                // Stop motors directly to avoid drift.
+                if (WHEELS instanceof org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) {
+                    org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels mech =
+                            (org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) WHEELS;
+                    mech.getFrontLeftMotor().setPower(0);
+                    mech.getFrontRightMotor().setPower(0);
+                    mech.getBackLeftMotor().setPower(0);
+                    mech.getBackRightMotor().setPower(0);
+                } else {
+                    // Fallback: use generic drive if not a MecanumWheels instance.
+                    WHEELS.drive(0, 0, 0);
+                }
             } else if (MECANUM_DRIVE != null) {
                 MECANUM_DRIVE.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
             }
         } else {
-            // Drive using the Wheels subsystem if available; otherwise fall
-            // back to the Road Runner drive.  The order of arguments for
-            // WHEELS.drive() is (xPower, yPower, rotation).
-            if (WHEELS != null) {
-                WHEELS.drive(strafe, forward, turn);
+            // Compute wheel powers using old participant's formula adapted to
+            // our control mapping.  vertical = forward/back, pivot = turn,
+            // horizontal = strafe.  The left motors are reversed in the
+            // hardware configuration so we use the same signs as before.
+            double frontRightPower = (-pivot + (vertical - horizontal));
+            double backRightPower  = (-pivot + vertical + horizontal);
+            double frontLeftPower  = (pivot + vertical + horizontal);
+            double backLeftPower   = (pivot + (vertical - horizontal));
 
-                // Provide telemetry feedback of individual wheel powers when
-                // using a MecanumWheels implementation.  This helps drivers
-                // understand how their inputs translate to motor output.
-                if (WHEELS instanceof org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) {
-                    org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels mech =
-                            (org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) WHEELS;
-                    telemetry.addData("Front left wheel power", mech.getFrontLeftMotor().getPower());
-                    telemetry.addData("Front right wheel power", mech.getFrontRightMotor().getPower());
-                    telemetry.addData("Back left wheel power", mech.getBackLeftMotor().getPower());
-                    telemetry.addData("Back right wheel power", mech.getBackRightMotor().getPower());
-                }
+            // Normalize the powers so no value exceeds |1|.
+            double max = Math.max(
+                    Math.max(Math.abs(frontLeftPower), Math.abs(frontRightPower)),
+                    Math.max(Math.abs(backLeftPower), Math.abs(backRightPower))
+            );
+            if (max > 1.0) {
+                frontLeftPower  /= max;
+                frontRightPower /= max;
+                backLeftPower   /= max;
+                backRightPower  /= max;
+            }
+
+            // Apply the computed powers to the motors.  If WHEELS is a
+            // MecanumWheels instance, set each motor directly; otherwise
+            // construct a PoseVelocity2d for Road Runner using our components.
+            if (WHEELS != null && WHEELS instanceof org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) {
+                org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels mech =
+                        (org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) WHEELS;
+                mech.getFrontLeftMotor().setPower(frontLeftPower);
+                mech.getFrontRightMotor().setPower(frontRightPower);
+                mech.getBackLeftMotor().setPower(backLeftPower);
+                mech.getBackRightMotor().setPower(backRightPower);
             } else if (MECANUM_DRIVE != null) {
-                // Fallback: convert the same inputs into a PoseVelocity2d.  Road
-                // Runner uses +y forward and +x right.  Since we invert the
-                // forward component above to correct for motor orientation,
-                // pass forward directly into the Y component here.
+                // Convert our vertical/pivot/horizontal into Road Runner's
+                // coordinate system: +y forward, +x right.  Our vertical is
+                // positive when pushing stick up (forward), so no inversion is
+                // needed.  Horizontal is positive for right strafe.  Pivot is
+                // positive for clockwise rotation, which matches Road Runner.
                 PoseVelocity2d velocity = new PoseVelocity2d(
-                        new Vector2d(strafe, forward),
-                        turn
+                        new Vector2d(horizontal, vertical),
+                        pivot
                 );
                 MECANUM_DRIVE.setDrivePowers(velocity);
+            }
+
+            // Telemetry: output wheel powers when available.  This helps
+            // diagnose issues with strafe direction.  Only show when using
+            // MecanumWheels to avoid clutter with Road Runner.
+            if (WHEELS != null && WHEELS instanceof org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) {
+                telemetry.addData("Front left wheel power",  frontLeftPower);
+                telemetry.addData("Front right wheel power", frontRightPower);
+                telemetry.addData("Back left wheel power",   backLeftPower);
+                telemetry.addData("Back right wheel power",  backRightPower);
             }
         }
 
