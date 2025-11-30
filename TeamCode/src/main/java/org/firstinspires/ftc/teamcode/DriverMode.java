@@ -6,6 +6,10 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import java.util.List;
+
 
 @TeleOp(name = "DriverMode")
 public class DriverMode extends CustomLinearOp {
@@ -71,7 +75,7 @@ public class DriverMode extends CustomLinearOp {
      * gamepad 2.  When the launcher is enabled via the X button, this
      * power is applied to the launcher motor; otherwise the power is zero.
      */
-    private double shooterPower = 0.8; // default mid‑range
+    private double shooterPower = 1.0; // default mid‑range
     private final double SHOOTER_POWER_LOW = 0.7;
     private final double SHOOTER_POWER_HIGH = 1.0;
     private boolean launcherEnabled = false;
@@ -95,6 +99,175 @@ public class DriverMode extends CustomLinearOp {
      * the call to {@code hardwareMap.get()} accordingly.
      */
     private DcMotorEx intakeMotor;
+
+    // --- Lazy Susan instant control tuning ---
+// Calibrate this once: ticksPerDeg = (tick change) / (measured degrees)
+    private static final double LAZY_TICKS_PER_DEG = 10.00; // TODO: tune on-bot
+    private static final double LAZY_MAX_DEG       = 180.0; // hard range from start
+    private static final double LAZY_SOFT_ZONE_DEG = 30.0;  // start easing in last 30°
+    private static final double LAZY_DEADBAND      = 0.07;  // ignore tiny stick wiggle
+    private static final double LAZY_FILTER_ALPHA  = 0.6;   // 0..1, higher = smoother
+    private static final double LAZY_GAIN          = 0.9;   // scales stick -> motor power
+    private static final double LAZY_POWER_MAX     = 0.8;   // safety cap on power
+
+
+    private int    lazyZeroTicks = 0;   // encoder value at start
+    private double lazyTargetDeg = 0.0; // still used for telemetry/limits
+    private double lazyStickFilt = 0.0; // smoothed stick value
+
+    // --- Aimbot config ---
+// Replace with your real IDs for this season
+    private static final int[] RED_TAG_IDS  = { 1, 2, 3 };
+    private static final int[] BLUE_TAG_IDS = { 4, 5, 6 };
+
+
+    // Proportional yaw -> Lazy Susan power
+    private static final double AIM_YAW_KP       = 0.02; // tune 0.015–0.03
+    private static final double AIM_POWER_MAX    = 0.80;
+    private static final double AIM_DEADBAND_DEG = 1.0;
+
+
+    // Distance (meters) -> launcher power (simple linear; tune after testing)
+    private static final double AIM_PWR_A = 0.55;
+    private static final double AIM_PWR_B = 0.12;
+    private static final double AIM_PWR_MIN = 0.70;
+    private static final double AIM_PWR_MAX = 1.00;
+
+
+    // A/B edge detect (A=enable, B=disable)
+    private boolean prevG2_A = false;
+    private boolean prevG2_B = false;
+    private boolean allianceIsRed = true; // hook to your team selector if you want
+
+
+    // Pick “best” detection: prefer alliance IDs, then smallest |yaw|
+    private AprilTagDetection pickBestDetection(List<AprilTagDetection> dets) {
+        if (dets == null || dets.isEmpty()) return null;
+
+
+        int[] ids = allianceIsRed ? RED_TAG_IDS : BLUE_TAG_IDS;
+
+
+        AprilTagDetection best = null;
+        double bestScore = Double.NEGATIVE_INFINITY;
+
+
+        for (AprilTagDetection d : dets) {
+            if (d == null || d.ftcPose == null) continue;
+
+
+            boolean idMatch = false;
+            for (int id : ids) if (d.id == id) { idMatch = true; break; }
+            if (!idMatch) continue;
+
+
+            double yaw = Math.abs(d.ftcPose.yaw);  // deg
+            double range = d.ftcPose.range * 0.0254; // inches -> meters
+            double score = -(yaw) - 0.2 * range;     // prefer small yaw & closer
+            if (score > bestScore) { bestScore = score; best = d; }
+        }
+
+
+        if (best != null) return best;
+
+
+        // Fallback: smallest |yaw|
+        for (AprilTagDetection d : dets) {
+            if (d == null || d.ftcPose == null) continue;
+            double score = -Math.abs(d.ftcPose.yaw);
+            if (score > bestScore) { bestScore = score; best = d; }
+        }
+        return best;
+    }
+
+
+    // Auto-aim: G2.A=ON, G2.B=OFF. Centers yaw with Lazy Susan and sets shooter power.
+    private void updateAimbot() {
+        // explicit ON/OFF controls
+        boolean aNow = gamepad2.a;
+        boolean bNow = gamepad2.b;
+        if (aNow && !prevG2_A) autoAimEnabled = true;
+        if (bNow && !prevG2_B) autoAimEnabled = false;
+        prevG2_A = aNow;
+        prevG2_B = bNow;
+
+
+        if (WEBCAM == null) {
+            telemetry.addData("Aimbot", autoAimEnabled ? "ON (no webcam)" : "OFF");
+            return;
+        }
+
+
+        // Use YOUR wrapper
+        AprilTagProcessor atp;
+        try {
+            atp = WEBCAM.getAprilTag();
+        } catch (Exception e) {
+            telemetry.addData("Aimbot", "No AprilTag processor");
+            return;
+        }
+        if (atp == null) {
+            telemetry.addData("Aimbot", "Processor null");
+            return;
+        }
+
+
+        List<AprilTagDetection> dets = atp.getDetections();
+        AprilTagDetection tgt = pickBestDetection(dets);
+
+
+        if (!autoAimEnabled || tgt == null || tgt.ftcPose == null) {
+            telemetry.addData("Aimbot", autoAimEnabled ? "ON (no tag)" : "OFF");
+            return; // no override if no tag
+        }
+
+
+        double yawDeg = tgt.ftcPose.yaw;           // + = tag to the right
+        double rangeM = tgt.ftcPose.range * 0.0254; // inches -> meters
+
+
+        telemetry.addData("AIM yaw(deg)", "%.1f", yawDeg);
+        telemetry.addData("AIM range(m)", "%.2f", rangeM);
+
+
+        // --- Lazy Susan yaw correction ---
+        if (lazySusanMotor != null) {
+            double cmd = 0.0;
+            if (Math.abs(yawDeg) >= AIM_DEADBAND_DEG) {
+                cmd = AIM_YAW_KP * yawDeg;
+                if (cmd >  AIM_POWER_MAX) cmd =  AIM_POWER_MAX;
+                if (cmd < -AIM_POWER_MAX) cmd = -AIM_POWER_MAX;
+
+
+                // Soft-limit near ±180° using your encoder math
+                int ticksNow = lazySusanMotor.getCurrentPosition();
+                double angleNowDeg = (ticksNow - lazyZeroTicks) / LAZY_TICKS_PER_DEG;
+                double margin = LAZY_MAX_DEG - Math.abs(angleNowDeg);
+                if (margin <= 0) {
+                    boolean pushingOut = (angleNowDeg >=  LAZY_MAX_DEG && cmd > 0) ||
+                            (angleNowDeg <= -LAZY_MAX_DEG && cmd < 0);
+                    if (pushingOut) cmd = 0.0;
+                }
+
+
+                if (lazySusanMotor.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
+                    lazySusanMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                }
+            }
+            lazySusanMotor.setPower(cmd);
+            telemetry.addData("AIM susanCmd", "%.2f", cmd);
+        }
+
+
+        // --- Launcher power from distance ---
+        if (launcherMotor != null) {
+            double autoPower = AIM_PWR_A + AIM_PWR_B * rangeM;
+            if (autoPower < AIM_PWR_MIN) autoPower = AIM_PWR_MIN;
+            if (autoPower > AIM_PWR_MAX) autoPower = AIM_PWR_MAX;
+            launcherMotor.setPower(autoPower); // aimbot overrides while ON
+            telemetry.addData("AIM shooterPower", "%.2f", autoPower);
+        }
+    }
 
     /**
      * the loop once.
@@ -249,14 +422,78 @@ public class DriverMode extends CustomLinearOp {
             // right trigger runs it in reverse.  If neither trigger is
             // pressed beyond the threshold, stop the intake.  Adjust the
             // threshold if you want partial trigger pull to be ignored.
-            if (gamepad2.left_trigger > 0.05) {
+            if (gamepad2.x) {
                 intakeMotor.setPower(1.0);
-            } else if (gamepad2.right_trigger > 0.05) {
+            } else if (gamepad2.y) {
                 intakeMotor.setPower(-1.0);
             } else {
                 intakeMotor.setPower(0.0);
             }
         }
+
+        if (launcherMotor != null) {
+            if (gamepad2.left_trigger > 0.05) {
+                launcherMotor.setPower(-1.0);
+            } else if (gamepad2.right_trigger > 0.05) {
+                launcherMotor.setPower(1.0);
+            } else {
+                launcherMotor.setPower(0.0);
+            }
+        }
+
+// Gamepad 2 LEFT STICK (X): Lazy Susan instant control with ±180° soft limit
+        if (!autoAimEnabled && lazySusanMotor != null) {
+            // 1) Read stick with small deadband
+            double lsxRaw = gamepad2.left_stick_x;
+            double lsx    = (Math.abs(lsxRaw) < LAZY_DEADBAND) ? 0.0 : lsxRaw;
+
+
+            // 2) Smooth it (simple EMA) so motion feels fluid
+            lazyStickFilt = LAZY_FILTER_ALPHA * lazyStickFilt + (1.0 - LAZY_FILTER_ALPHA) * lsx;
+
+
+            // 3) Compute current angle from encoder ticks
+            int    ticksNow        = lazySusanMotor.getCurrentPosition();
+            double angleNowDeg     = (ticksNow - lazyZeroTicks) / LAZY_TICKS_PER_DEG;
+
+
+            // 4) Update target angle for telemetry (not required to move)
+            lazyTargetDeg += lazyStickFilt * 3.0; // a small “mental” target for display
+            if (lazyTargetDeg >  LAZY_MAX_DEG) lazyTargetDeg =  LAZY_MAX_DEG;
+            if (lazyTargetDeg < -LAZY_MAX_DEG) lazyTargetDeg = -LAZY_MAX_DEG;
+
+
+            // 5) Soft-limit scaling as we approach ±180°
+            double margin = LAZY_MAX_DEG - Math.abs(angleNowDeg);
+            double softScale = 1.0;
+            if (margin <= 0) {
+                // already at/over hard limit -> only allow power back toward center
+                boolean pushingOut = (angleNowDeg >=  LAZY_MAX_DEG && lazyStickFilt > 0) ||
+                        (angleNowDeg <= -LAZY_MAX_DEG && lazyStickFilt < 0);
+                softScale = pushingOut ? 0.0 : 1.0;
+            } else if (margin < LAZY_SOFT_ZONE_DEG) {
+                // ease power in last few degrees
+                softScale = Math.max(0.0, margin / LAZY_SOFT_ZONE_DEG);
+            }
+
+
+            // 6) Power command: instant, smoothed, limited near bounds
+            double cmd = LAZY_GAIN * lazyStickFilt * softScale;
+            cmd = Math.max(-LAZY_POWER_MAX, Math.min(LAZY_POWER_MAX, cmd));
+
+
+            // Ensure we’re in the instant-response mode
+            if (lazySusanMotor.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
+                lazySusanMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            }
+            lazySusanMotor.setPower(cmd);
+
+
+            telemetry.addData("LazySusan ang(deg)", "%.1f", angleNowDeg);
+            telemetry.addData("LazySusan cmd",      "%.2f", cmd);
+        }
+
+        updateAimbot();
 
         telemetry.update();
     }
@@ -308,14 +545,24 @@ public class DriverMode extends CustomLinearOp {
         // checks in runLoop() will prevent NullPointerExceptions.
         try {
             lazySusanMotor = hardwareMap.get(DcMotorEx.class, "lazySusanMotor");
+            // Flip to REVERSE if left/right feels backward (or negate LAZY_GAIN below).
             lazySusanMotor.setDirection(DcMotorSimple.Direction.FORWARD);
-            lazySusanMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             lazySusanMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+
+            // Zero encoder so “0°” = start facing
+            lazySusanMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            lazySusanMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER); // <<< instant response
             lazySusanMotor.setPower(0.0);
-            telemetry.addLine("Lazy Susan motor initialised");
+
+
+            lazyZeroTicks = 0;
+            lazyTargetDeg = 0.0;
+            telemetry.addLine("Lazy Susan motor initialised (RUN_USING_ENCODER)");
         } catch (Exception e) {
             telemetry.addLine("WARNING: Lazy Susan motor not found");
         }
+
         try {
             launcherMotor = hardwareMap.get(DcMotorEx.class, "launcherMotor");
             // The launcher spins counter‑clockwise when viewed from the front

@@ -113,6 +113,10 @@ public class Webcam {
 
         // Set the custom pipeline
         pipeLine = new PipeLine();
+
+// >>> ADD THIS LINE (prevents null in the switch)
+        pipeLine.targetColor = Webcam.Color.RED; // default; you can change to BLUE at init
+
         OPEN_CV_CAMERA.setPipeline(pipeLine);
 
         // Open the camera device and start streaming
@@ -265,20 +269,31 @@ public class Webcam {
             // Create mask to filter out the desired color(s)
             Core.inRange(hsv, Color.YELLOW.getLowerBound(),
                     Webcam.Color.RED.getUpperBound(), yellowMask);
-            switch (targetColor) {
-                case RED:
-                    Core.inRange(hsv, Color.RED.getLowerBound(),
-                            Color.RED.getUpperBound(), redMask);
-                    Core.inRange(hsv, Color.MAGENTA.getLowerBound(),
-                            Color.MAGENTA.getUpperBound(), magentaMask);
-                    Core.bitwise_or(redMask, magentaMask, allianceColorMask);
-                    break;
+// Create mask to filter out the desired color(s)
+            Core.inRange(hsv, Color.YELLOW.getLowerBound(),
+                    Webcam.Color.RED.getUpperBound(), yellowMask);
 
-                case BLUE:
-                    Core.inRange(hsv, Color.BLUE.getLowerBound(),
-                            Color.BLUE.getUpperBound(), allianceColorMask);
-                    break;
+            if (targetColor == null) {
+                // No alliance color picked yet -> no alliance mask
+                allianceColorMask.setTo(new Scalar(0, 0, 0));
+            } else {
+                switch (targetColor) {
+                    case RED:
+                        Core.inRange(hsv, Color.RED.getLowerBound(),
+                                Color.RED.getUpperBound(), redMask);
+                        Core.inRange(hsv, Color.MAGENTA.getLowerBound(),
+                                Color.MAGENTA.getUpperBound(), magentaMask);
+                        Core.bitwise_or(redMask, magentaMask, allianceColorMask);
+                        break;
+
+
+                    case BLUE:
+                        Core.inRange(hsv, Color.BLUE.getLowerBound(),
+                                Color.BLUE.getUpperBound(), allianceColorMask);
+                        break;
+                }
             }
+
             Core.bitwise_or(yellowMask, allianceColorMask, mask);
 
             // Find contours
