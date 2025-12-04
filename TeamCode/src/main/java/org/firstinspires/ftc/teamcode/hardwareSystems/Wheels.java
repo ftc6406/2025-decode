@@ -96,13 +96,10 @@ public abstract class Wheels {
      * @param forwardPower What power to set the motors to.
      */
     public void drive(double forwardPower) {
-        /*
-         * Forward/backwards movement does not involve sideways x‑motion,
-         * so supply 0 for the xPower argument.
-         * The previous implementation erroneously passed the forward power
-         * as the xPower,
-         * causing the robot to strafe instead of drive forward.
-         */
+        // Forward/backwards movement does not involve sideways x‑motion,
+        // so supply 0 for the xPower argument. The previous implementation
+        // erroneously passed the forward power as the xPower, causing the
+        // robot to strafe instead of drive forward.
         drive(0, forwardPower, 0);
     }
 
