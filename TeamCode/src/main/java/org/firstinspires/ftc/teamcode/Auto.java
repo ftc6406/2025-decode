@@ -8,6 +8,10 @@ import java.util.List;
 import org.firstinspires.ftc.teamcode.hardwareSystems.Webcam;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
+import org.firstinspires.ftc.teamcode.AutoSettings;
+import static org.firstinspires.ftc.teamcode.AutoSettings.AllianceColor;
+import static org.firstinspires.ftc.teamcode.AutoSettings.TeamSide;
+
 @Autonomous(name = "Auto")
 public class Auto extends CustomLinearOp {
     /**
@@ -28,6 +32,22 @@ public class Auto extends CustomLinearOp {
         // CustomLinearOp.  This also reads the alliance/side from the
         // auto settings file and sets up the VisionPortal.
         super.runOpMode();
+
+        AutoSettings.readFromFile();
+        applyAllianceToWebcam();
+        AllianceColor ac = AutoSettings.getAlliance();
+        TeamSide ts      = AutoSettings.getTeamSide();
+        telemetry.addData("Alliance", ac);
+        telemetry.addData("Team Side", ts);
+        telemetry.update();
+
+        AutoSettings.readFromFile();
+        applyAllianceToWebcam();
+        double strafe = 12.0;
+        double forward = 24.0;
+        if (AutoSettings.getAlliance() == AutoSettings.AllianceColor.BLUE) strafe = -strafe;
+        if (AutoSettings.getTeamSide() == AutoSettings.TeamSide.FAR) forward = -forward;
+
 
         // Wait for the driver to press Start on the Driver Station.  At
         // this point the webcam is streaming and the AprilTag processor
@@ -91,6 +111,10 @@ public class Auto extends CustomLinearOp {
         if (!isNear) {
             forwardDist = -forwardDist;
         }
+
+        double strafeDist = 12.0;
+        if (ac == AllianceColor.BLUE) strafeDist = -strafeDist;
+        if (ts == TeamSide.FAR) forwardDist = -forwardDist;
 
         // Execute the selected path.  Use driveDistance for simple
         // movements.  If Road Runner is configured (MECANUM_DRIVE !=

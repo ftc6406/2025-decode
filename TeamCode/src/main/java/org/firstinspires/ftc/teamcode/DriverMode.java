@@ -10,6 +10,13 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import java.util.List;
 
+import org.firstinspires.ftc.teamcode.AutoSettings;
+import static org.firstinspires.ftc.teamcode.AutoSettings.AllianceColor;
+import static org.firstinspires.ftc.teamcode.AutoSettings.TeamSide;
+
+import org.firstinspires.ftc.teamcode.hardwareSystems.Webcam; // for Color
+
+
 
 @TeleOp(name = "DriverMode")
 public class DriverMode extends CustomLinearOp {
@@ -117,8 +124,8 @@ public class DriverMode extends CustomLinearOp {
 
     // --- Aimbot config ---
 // Replace with your real IDs for this season
-    private static final int[] RED_TAG_IDS  = { 1, 2, 3 };
-    private static final int[] BLUE_TAG_IDS = { 4, 5, 6 };
+    private static final int[] RED_TAG_IDS  = { 24 };
+    private static final int[] BLUE_TAG_IDS = { 20 };
 
 
     // Proportional yaw -> Lazy Susan power
@@ -191,12 +198,10 @@ public class DriverMode extends CustomLinearOp {
         prevG2_A = aNow;
         prevG2_B = bNow;
 
-
         if (WEBCAM == null) {
             telemetry.addData("Aimbot", autoAimEnabled ? "ON (no webcam)" : "OFF");
             return;
         }
-
 
         // Use YOUR wrapper
         AprilTagProcessor atp;
@@ -267,6 +272,13 @@ public class DriverMode extends CustomLinearOp {
             launcherMotor.setPower(autoPower); // aimbot overrides while ON
             telemetry.addData("AIM shooterPower", "%.2f", autoPower);
         }
+    }
+
+    public void applyAllianceToWebcam() {
+        if (WEBCAM == null) return;
+        Webcam.Color color = AutoSettings.getAlliance() == AllianceColor.RED
+                ? Webcam.Color.RED : Webcam.Color.BLUE;
+        WEBCAM.setTargetColor(color);
     }
 
     /**
@@ -501,6 +513,27 @@ public class DriverMode extends CustomLinearOp {
     @Override
     public void runOpMode() {
         super.runOpMode();
+
+        AutoSettings.readFromFile();
+        applyAllianceToWebcam();
+        AllianceColor ac = AutoSettings.getAlliance();
+        TeamSide ts      = AutoSettings.getTeamSide();
+        telemetry.addData("Alliance", ac);
+        telemetry.addData("Team Side", ts);
+        telemetry.update();
+
+        telemetry.addLine("Select: X=RED, B=BLUE, up=FAR, down=NEAR");
+        while (!isStarted() && !isStopRequested()) {
+            if (gamepad1.x)  AutoSettings.set(AllianceColor.RED,  AutoSettings.getTeamSide(), false);
+            if (gamepad1.b)  AutoSettings.set(AllianceColor.BLUE, AutoSettings.getTeamSide(), false);
+            if (gamepad1.dpad_up)   AutoSettings.set(AutoSettings.getAlliance(), TeamSide.FAR, false);
+            if (gamepad1.dpad_down) AutoSettings.set(AutoSettings.getAlliance(), TeamSide.NEAR, false);
+            telemetry.addData("Alliance", AutoSettings.getAlliance());
+            telemetry.addData("Team Side", AutoSettings.getTeamSide());
+            telemetry.update();
+        }
+        AutoSettings.writeToFile();
+        applyAllianceToWebcam();
 
         // -----------------------------------------------------------------
         // Calibrate driver control offsets.  Ask the driver to release all

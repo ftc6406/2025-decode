@@ -9,6 +9,11 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.AutoSettings;
+import static org.firstinspires.ftc.teamcode.AutoSettings.AllianceColor;
+import static org.firstinspires.ftc.teamcode.AutoSettings.TeamSide;
+
+
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 /*
  * Import statements for Arm and Claw have been removed because the
@@ -25,6 +30,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
+
+import org.firstinspires.ftc.teamcode.hardwareSystems.Webcam;
 
 public class CustomLinearOp extends LinearOpMode {
     /**
@@ -60,6 +67,27 @@ public class CustomLinearOp extends LinearOpMode {
      * Store which side the robot is on(i.e. far or near).
      */
     protected TeamSide TEAM_SIDE;
+
+
+
+    /**
+     * Apply the currently selected alliance to the webcam’s color target.
+     * Called in both DriverMode and Auto after AutoSettings.readFromFile().
+     */
+    protected void applyAllianceToWebcam() {
+        if (WEBCAM == null) {
+            return;     // no camera configured
+        }
+
+        AutoSettings.AllianceColor ac = AutoSettings.getAlliance();
+
+        // Map alliance to webcam color enum
+        if (ac == AutoSettings.AllianceColor.RED) {
+            WEBCAM.setTargetColor(org.firstinspires.ftc.teamcode.hardwareSystems.Webcam.Color.RED);
+        } else if (ac == AutoSettings.AllianceColor.BLUE) {
+            WEBCAM.setTargetColor(org.firstinspires.ftc.teamcode.hardwareSystems.Webcam.Color.BLUE);
+        }
+    }
 
     public HashSet<DcMotor> getAllDcMotors() {
         HashSet<DcMotor> motors = new HashSet<>();
@@ -328,9 +356,15 @@ public class CustomLinearOp extends LinearOpMode {
      *
      * @see CustomLinearOp#readAutoSettingsFile(String)
      */
+    /**
+     * Convenience wrapper: read the auto-settings file using
+     * the standard path from AutoSettings.
+     */
     public String readAutoSettingsFile() {
+        // Use the path string of the File object
         return readAutoSettingsFile(AutoSettings.getPositionFile());
     }
+
 
     /**
      * Run automatically after pressing "Init."
