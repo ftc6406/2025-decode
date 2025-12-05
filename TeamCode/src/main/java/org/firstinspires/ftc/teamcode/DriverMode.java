@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.acmerobotics.roadrunner.PoseVelocity2d;
-import com.acmerobotics.roadrunner.Vector2d;
+//import com.acmerobotics.roadrunner.PoseVelocity2d;
+//import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -493,7 +493,7 @@ public class DriverMode extends CustomLinearOp {
                 mech.getBackRightMotor().setPower(0);
             } else if (MECANUM_DRIVE != null) {
                 // For Road Runner fallback, send zero drive powers.
-                MECANUM_DRIVE.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
+//                MECANUM_DRIVE.setDrivePowers(new PoseVelocity2d(new Vector2d(0, 0), 0));
             }
         } else {
             // Compute wheel powers using the same equations from the old
@@ -530,11 +530,11 @@ public class DriverMode extends CustomLinearOp {
                 // forward/backward; horizontal controls strafe; pivot controls
                 // rotation.  The forward value must be negated because
                 // PoseVelocity2d expects +y forward.
-                PoseVelocity2d velocity = new PoseVelocity2d(
-                        new Vector2d(horizontal, -vertical),
-                        pivot
-                );
-                MECANUM_DRIVE.setDrivePowers(velocity);
+//                PoseVelocity2d velocity = new PoseVelocity2d(
+//                        new Vector2d(horizontal, -vertical),
+//                        pivot
+//                );
+//                MECANUM_DRIVE.setDrivePowers(velocity);
             }
         }
 
@@ -829,13 +829,13 @@ public class DriverMode extends CustomLinearOp {
             // Rising edge on X: button just pressed this loop
             if (xNow && !prevG1_X) {
                 limiterCurrentPos = LIMITER_TARGET_POS;
-                limiterServo.setPosition(limiterCurrentPos);
+                limiterServo.setPosition(LIMITER_TARGET_POS);
             }
 
             // Rising edge on Y: button just pressed this loop
             if (yNow && !prevG1_Y) {
                 limiterCurrentPos = LIMITER_HOME_POS;
-                limiterServo.setPosition(limiterCurrentPos);
+                limiterServo.setPosition(LIMITER_HOME_POS);
             }
 
             // Save button states for next loop
