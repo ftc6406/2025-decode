@@ -9,14 +9,13 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import java.util.List;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.AutoSettings;
 import static org.firstinspires.ftc.teamcode.AutoSettings.AllianceColor;
 import static org.firstinspires.ftc.teamcode.AutoSettings.TeamSide;
 
 import org.firstinspires.ftc.teamcode.hardwareSystems.Webcam; // for Color
-
-
 
 @TeleOp(name = "DriverMode")
 public class DriverMode extends CustomLinearOp {
@@ -107,6 +106,34 @@ public class DriverMode extends CustomLinearOp {
      */
     private DcMotorEx intakeMotor;
 
+    /**
+     * Servo for limiter mechanism.
+     * Standard 0.0–1.0 position servo.
+     *
+     * In the Robot Controller configuration, make sure you have
+     * a Servo named "limiterServo".
+     */
+    private Servo limiterServo;
+
+    /**
+     * Servo position presets (0.0–1.0).
+     *
+     * LIMITER_HOME_POS   = retracted / original position.
+     * LIMITER_TARGET_POS = “out” position, about 90° away from home.
+     *
+     * You MUST tune these on the robot.
+     * Start with something clearly different so you can see it move.
+     */
+    private static final double LIMITER_HOME_POS   = 0.20;  // clearly “in”
+    private static final double LIMITER_TARGET_POS = 0.80;  // clearly “out”
+
+    // Track what we last commanded (for telemetry / debugging).
+    private double limiterCurrentPos = LIMITER_HOME_POS;
+
+    // Edge-detection for Gamepad1 X/Y so one press = one action.
+    private boolean prevG1_X = false;
+    private boolean prevG1_Y = false;
+
     // --- Lazy Susan instant control tuning ---
 // Calibrate this once: ticksPerDeg = (tick change) / (measured degrees)
     private static final double LAZY_TICKS_PER_DEG = 10.00; // TODO: tune on-bot
@@ -127,46 +154,52 @@ public class DriverMode extends CustomLinearOp {
     private static final int[] RED_TAG_IDS  = { 24 };
     private static final int[] BLUE_TAG_IDS = { 20 };
 
-
-    // Proportional yaw -> Lazy Susan power
+    // Proportional yaw -> Lazy Susan power (same as before)
     private static final double AIM_YAW_KP       = 0.02; // tune 0.015–0.03
     private static final double AIM_POWER_MAX    = 0.80;
     private static final double AIM_DEADBAND_DEG = 1.0;
 
+    // Distance-based shooter power:
+    // We want full power at about 12 ft (≈ 3.7 m),
+    // and a bit less power as we get closer to the goal.
+    private static final double AIM_RANGE_NEAR_M = 0.70; // very close to goal (~2.3 ft)
+    private static final double AIM_RANGE_FAR_M  = 3.70; // about 12 ft from goal
 
-    // Distance (meters) -> launcher power (simple linear; tune after testing)
-    private static final double AIM_PWR_A = 0.55;
-    private static final double AIM_PWR_B = 0.12;
-    private static final double AIM_PWR_MIN = 0.70;
-    private static final double AIM_PWR_MAX = 1.00;
+    // Shooter power values at those distances.
+    // You can tune these numbers on the robot without changing any code.
+    private static final double AIM_PWR_NEAR = 0.80; // power when very close
+    private static final double AIM_PWR_FAR  = 1.00; // power at 12 ft
 
+    // When aimbot is ON but no tag is visible, we will "scan" left/right
+    // with the Lazy Susan to look for the target.
+    private static final double AIM_SCAN_POWER        = 0.25; // how fast to scan
+    private static final double AIM_SEARCH_LIMIT_DEG  = 90.0; // max search angle left/right
 
     // A/B edge detect (A=enable, B=disable)
     private boolean prevG2_A = false;
     private boolean prevG2_B = false;
-    private boolean allianceIsRed = true; // hook to your team selector if you want
+    private boolean allianceIsRed = true; // we will sync this with AutoSettings
 
+    // Aimbot scan state:
+    // +1  = scanning to the right
+    // -1  = scanning to the left
+    private int aimScanDirection = 1;
 
     // Pick “best” detection: prefer alliance IDs, then smallest |yaw|
     private AprilTagDetection pickBestDetection(List<AprilTagDetection> dets) {
         if (dets == null || dets.isEmpty()) return null;
 
-
         int[] ids = allianceIsRed ? RED_TAG_IDS : BLUE_TAG_IDS;
-
 
         AprilTagDetection best = null;
         double bestScore = Double.NEGATIVE_INFINITY;
 
-
         for (AprilTagDetection d : dets) {
             if (d == null || d.ftcPose == null) continue;
-
 
             boolean idMatch = false;
             for (int id : ids) if (d.id == id) { idMatch = true; break; }
             if (!idMatch) continue;
-
 
             double yaw = Math.abs(d.ftcPose.yaw);  // deg
             double range = d.ftcPose.range * 0.0254; // inches -> meters
@@ -174,9 +207,7 @@ public class DriverMode extends CustomLinearOp {
             if (score > bestScore) { bestScore = score; best = d; }
         }
 
-
         if (best != null) return best;
-
 
         // Fallback: smallest |yaw|
         for (AprilTagDetection d : dets) {
@@ -187,23 +218,43 @@ public class DriverMode extends CustomLinearOp {
         return best;
     }
 
-
-    // Auto-aim: G2.A=ON, G2.B=OFF. Centers yaw with Lazy Susan and sets shooter power.
+    // Auto-aim: G2.A = ON, G2.B = OFF.
+    // When ON:
+    //  - The turret (Lazy Susan) keeps turning until it finds the right AprilTag.
+    //  - Once locked, it centers the tag and sets shooter power based on distance.
     private void updateAimbot() {
-        // explicit ON/OFF controls
+        // 1) Read buttons from gamepad 2 to turn aimbot ON or OFF.
         boolean aNow = gamepad2.a;
         boolean bNow = gamepad2.b;
+
+
+        // If A was just pressed (rising edge), turn aimbot ON.
         if (aNow && !prevG2_A) autoAimEnabled = true;
+        // If B was just pressed, turn aimbot OFF.
         if (bNow && !prevG2_B) autoAimEnabled = false;
+
+
+        // Save current button states for next loop.
         prevG2_A = aNow;
         prevG2_B = bNow;
 
-        if (WEBCAM == null) {
-            telemetry.addData("Aimbot", autoAimEnabled ? "ON (no webcam)" : "OFF");
+
+        // 2) If aimbot is OFF, we do nothing here.
+        //    Driver still has manual control of the Lazy Susan in the main loop.
+        if (!autoAimEnabled) {
+            telemetry.addData("Aimbot", "OFF");
             return;
         }
 
-        // Use YOUR wrapper
+
+        // 3) If we do not have a webcam, we cannot aim automatically.
+        if (WEBCAM == null) {
+            telemetry.addData("Aimbot", "ON (no webcam)");
+            return;
+        }
+
+
+        // 4) Get the AprilTag processor from our webcam wrapper.
         AprilTagProcessor atp;
         try {
             atp = WEBCAM.getAprilTag();
@@ -217,48 +268,75 @@ public class DriverMode extends CustomLinearOp {
         }
 
 
+        // 5) Ask the processor for all current detections.
         List<AprilTagDetection> dets = atp.getDetections();
+
+
+        // pickBestDetection() uses allianceIsRed and our RED/BLUE_TAG_IDS
+        // to pick the "best" tag for our alliance.
         AprilTagDetection tgt = pickBestDetection(dets);
 
 
-        if (!autoAimEnabled || tgt == null || tgt.ftcPose == null) {
-            telemetry.addData("Aimbot", autoAimEnabled ? "ON (no tag)" : "OFF");
-            return; // no override if no tag
+        // 6) If aimbot is ON but we do NOT see any valid tag yet,
+        //    we will SCAN left/right within ±AIM_SEARCH_LIMIT_DEG
+        //    to try to find the target.
+        if (tgt == null || tgt.ftcPose == null) {
+            telemetry.addData("Aimbot", "ON (searching)");
+            updateAimbotSearch();  // new helper: slowly sweep the turret
+            return;                // stop here for this loop
         }
 
 
-        double yawDeg = tgt.ftcPose.yaw;           // + = tag to the right
-        double rangeM = tgt.ftcPose.range * 0.0254; // inches -> meters
+        // 7) If we reach this point, we have a valid target.
+        //    Extract yaw (angle left/right) and range (distance) from the tag.
+        double yawDeg = tgt.ftcPose.yaw;             // + = target appears to the right
+        double rangeM = tgt.ftcPose.range * 0.0254;  // convert inches -> meters
 
 
-        telemetry.addData("AIM yaw(deg)", "%.1f", yawDeg);
-        telemetry.addData("AIM range(m)", "%.2f", rangeM);
+        telemetry.addData("AIM yaw(deg)",   "%.1f", yawDeg);
+        telemetry.addData("AIM range(m)",   "%.2f", rangeM);
 
 
         // --- Lazy Susan yaw correction ---
         if (lazySusanMotor != null) {
             double cmd = 0.0;
+
+
+            // Only move if we are outside the small deadband.
             if (Math.abs(yawDeg) >= AIM_DEADBAND_DEG) {
+                // Basic proportional controller: power is proportional to yaw error.
                 cmd = AIM_YAW_KP * yawDeg;
+
+
+                // Limit command to a safe range so the turret does not move too fast.
                 if (cmd >  AIM_POWER_MAX) cmd =  AIM_POWER_MAX;
                 if (cmd < -AIM_POWER_MAX) cmd = -AIM_POWER_MAX;
 
 
-                // Soft-limit near ±180° using your encoder math
+                // Soft-limit near the mechanical bounds using encoder math.
                 int ticksNow = lazySusanMotor.getCurrentPosition();
                 double angleNowDeg = (ticksNow - lazyZeroTicks) / LAZY_TICKS_PER_DEG;
+
+
                 double margin = LAZY_MAX_DEG - Math.abs(angleNowDeg);
                 if (margin <= 0) {
-                    boolean pushingOut = (angleNowDeg >=  LAZY_MAX_DEG && cmd > 0) ||
-                            (angleNowDeg <= -LAZY_MAX_DEG && cmd < 0);
+                    // We are at or beyond the allowed range.
+                    // If we are trying to push further OUT, set power to 0.
+                    boolean pushingOut =
+                            (angleNowDeg >=  LAZY_MAX_DEG && cmd > 0) ||
+                                    (angleNowDeg <= -LAZY_MAX_DEG && cmd < 0);
                     if (pushingOut) cmd = 0.0;
                 }
 
 
+                // Make sure the motor is in encoder mode for instant response.
                 if (lazySusanMotor.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
                     lazySusanMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                 }
             }
+
+
+            // Send the final command to the Lazy Susan motor.
             lazySusanMotor.setPower(cmd);
             telemetry.addData("AIM susanCmd", "%.2f", cmd);
         }
@@ -266,12 +344,85 @@ public class DriverMode extends CustomLinearOp {
 
         // --- Launcher power from distance ---
         if (launcherMotor != null) {
-            double autoPower = AIM_PWR_A + AIM_PWR_B * rangeM;
-            if (autoPower < AIM_PWR_MIN) autoPower = AIM_PWR_MIN;
-            if (autoPower > AIM_PWR_MAX) autoPower = AIM_PWR_MAX;
-            launcherMotor.setPower(autoPower); // aimbot overrides while ON
+            // Use our helper to convert distance (meters) to shooter motor power.
+            double autoPower = computeAimbotShooterPower(rangeM);
+
+
+            // While aimbot is ON, we override manual shooter power.
+            launcherMotor.setPower(autoPower);
+
+
             telemetry.addData("AIM shooterPower", "%.2f", autoPower);
         }
+    }
+
+    /**
+     * Compute shooter power from distance (in meters).
+     *
+     * At AIM_RANGE_NEAR_M  (very close) -> use AIM_PWR_NEAR.
+     * At AIM_RANGE_FAR_M   (~12 ft)     -> use AIM_PWR_FAR (full power).
+     *
+     * Everything in between is smoothly blended.
+     */
+    private double computeAimbotShooterPower(double rangeM) {
+        // If distance looks crazy (NaN or infinite), use a safe middle power.
+        if (Double.isNaN(rangeM) || Double.isInfinite(rangeM)) {
+            return 0.90; // reasonable default if we do not trust the distance
+        }
+
+        // Clamp distance between our near and far tuning distances.
+        double clamped = rangeM;
+        if (clamped < AIM_RANGE_NEAR_M) clamped = AIM_RANGE_NEAR_M;
+        if (clamped > AIM_RANGE_FAR_M)  clamped = AIM_RANGE_FAR_M;
+
+        // t goes from 0 (near) to 1 (far).
+        double t = (clamped - AIM_RANGE_NEAR_M) /
+                (AIM_RANGE_FAR_M - AIM_RANGE_NEAR_M);
+
+        // Linearly interpolate power between near and far.
+        double power = AIM_PWR_NEAR + t * (AIM_PWR_FAR - AIM_PWR_NEAR);
+
+        // Final safety clamp between 0 and 1.
+        if (power < 0.0) power = 0.0;
+        if (power > 1.0) power = 1.0;
+
+        return power;
+    }
+
+    /**
+     * When aimbot is ON but no tag is visible, this method slowly
+     * scans the turret left and right to look for the AprilTag.
+     *
+     * It uses encoder ticks to keep motion within ±AIM_SEARCH_LIMIT_DEG.
+     */
+    private void updateAimbotSearch() {
+        // If we do not have a Lazy Susan motor, we cannot scan.
+        if (lazySusanMotor == null) return;
+
+        // Read current angle from encoder ticks.
+        int ticksNow = lazySusanMotor.getCurrentPosition();
+        double angleNowDeg = (ticksNow - lazyZeroTicks) / LAZY_TICKS_PER_DEG;
+
+        // If we go past our search limit on one side, flip direction.
+        if (angleNowDeg > AIM_SEARCH_LIMIT_DEG) {
+            aimScanDirection = -1;  // start scanning back to the left
+        } else if (angleNowDeg < -AIM_SEARCH_LIMIT_DEG) {
+            aimScanDirection = 1;   // start scanning back to the right
+        }
+
+        // Compute a simple constant power in the current scan direction.
+        double cmd = aimScanDirection * AIM_SCAN_POWER;
+
+        // Make sure we are in RUN_USING_ENCODER for instant response.
+        if (lazySusanMotor.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
+            lazySusanMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
+
+        // Send command to the motor.
+        lazySusanMotor.setPower(cmd);
+
+        telemetry.addData("AIM searchAngle(deg)", "%.1f", angleNowDeg);
+        telemetry.addData("AIM searchCmd",        "%.2f", cmd);
     }
 
     public void applyAllianceToWebcam() {
@@ -459,21 +610,17 @@ public class DriverMode extends CustomLinearOp {
             double lsxRaw = gamepad2.left_stick_x;
             double lsx    = (Math.abs(lsxRaw) < LAZY_DEADBAND) ? 0.0 : lsxRaw;
 
-
             // 2) Smooth it (simple EMA) so motion feels fluid
             lazyStickFilt = LAZY_FILTER_ALPHA * lazyStickFilt + (1.0 - LAZY_FILTER_ALPHA) * lsx;
-
 
             // 3) Compute current angle from encoder ticks
             int    ticksNow        = lazySusanMotor.getCurrentPosition();
             double angleNowDeg     = (ticksNow - lazyZeroTicks) / LAZY_TICKS_PER_DEG;
 
-
             // 4) Update target angle for telemetry (not required to move)
             lazyTargetDeg += lazyStickFilt * 3.0; // a small “mental” target for display
             if (lazyTargetDeg >  LAZY_MAX_DEG) lazyTargetDeg =  LAZY_MAX_DEG;
             if (lazyTargetDeg < -LAZY_MAX_DEG) lazyTargetDeg = -LAZY_MAX_DEG;
-
 
             // 5) Soft-limit scaling as we approach ±180°
             double margin = LAZY_MAX_DEG - Math.abs(angleNowDeg);
@@ -488,18 +635,15 @@ public class DriverMode extends CustomLinearOp {
                 softScale = Math.max(0.0, margin / LAZY_SOFT_ZONE_DEG);
             }
 
-
             // 6) Power command: instant, smoothed, limited near bounds
             double cmd = LAZY_GAIN * lazyStickFilt * softScale;
             cmd = Math.max(-LAZY_POWER_MAX, Math.min(LAZY_POWER_MAX, cmd));
-
 
             // Ensure we’re in the instant-response mode
             if (lazySusanMotor.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
                 lazySusanMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             }
             lazySusanMotor.setPower(cmd);
-
 
             telemetry.addData("LazySusan ang(deg)", "%.1f", angleNowDeg);
             telemetry.addData("LazySusan cmd",      "%.2f", cmd);
@@ -535,6 +679,9 @@ public class DriverMode extends CustomLinearOp {
         AutoSettings.writeToFile();
         applyAllianceToWebcam();
 
+        // Sync aimbot alliance flag with AutoSettings
+        allianceIsRed = (AutoSettings.getAlliance() == AllianceColor.RED);
+
         // -----------------------------------------------------------------
         // Calibrate driver control offsets.  Ask the driver to release all
         // sticks and triggers during the init period.  Sample the raw
@@ -549,7 +696,7 @@ public class DriverMode extends CustomLinearOp {
         double hSum = 0.0;
         double pSum = 0.0;
         int samples = 0;
-        while (!isStarted() && !isStopRequested() && System.currentTimeMillis() < sampleEnd) {
+        while (!isStopRequested() && System.currentTimeMillis() < sampleEnd) {
             // Sample the raw inputs using the same axes used in runLoop.
             // Use the same conventions as runLoop: negate right stick Y for forward,
             // and use the difference of triggers for strafe.  Do not apply
@@ -582,12 +729,10 @@ public class DriverMode extends CustomLinearOp {
             lazySusanMotor.setDirection(DcMotorSimple.Direction.FORWARD);
             lazySusanMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-
             // Zero encoder so “0°” = start facing
             lazySusanMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             lazySusanMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER); // <<< instant response
             lazySusanMotor.setPower(0.0);
-
 
             lazyZeroTicks = 0;
             lazyTargetDeg = 0.0;
@@ -645,6 +790,19 @@ public class DriverMode extends CustomLinearOp {
             telemetry.addLine("WARNING: Intake motor not found.\n" + e.getMessage());
         }
 
+        // Initialise the limiter servo.
+        // Make sure your configuration has a Servo device named "limiterServo".
+        try {
+            limiterServo = hardwareMap.get(Servo.class, "limiterServo");
+
+            // Start the limiter at its HOME position.
+            limiterServo.setPosition(LIMITER_HOME_POS);
+
+            telemetry.addLine("Limiter servo initialised");
+        } catch (Exception e) {
+            telemetry.addLine("WARNING: Limiter servo not found");
+        }
+
         /*
         cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                 "cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName()
@@ -659,6 +817,35 @@ public class DriverMode extends CustomLinearOp {
                 telemetry.addLine("\nWARNING AN ERROR OCCURRED!!!");
                 telemetry.addLine(e.getMessage());
             }
+        }
+
+        // === Gamepad 1 servo control (Limiter ONLY) ===
+        // X  -> move limiter OUT (LIMITER_TARGET_POS)
+        // Y  -> move limiter IN  (LIMITER_HOME_POS)
+        if (limiterServo != null) {
+            boolean xNow = gamepad1.x;
+            boolean yNow = gamepad1.y;
+
+            // Rising edge on X: button just pressed this loop
+            if (xNow && !prevG1_X) {
+                limiterCurrentPos = LIMITER_TARGET_POS;
+                limiterServo.setPosition(limiterCurrentPos);
+            }
+
+            // Rising edge on Y: button just pressed this loop
+            if (yNow && !prevG1_Y) {
+                limiterCurrentPos = LIMITER_HOME_POS;
+                limiterServo.setPosition(limiterCurrentPos);
+            }
+
+            // Save button states for next loop
+            prevG1_X = xNow;
+            prevG1_Y = yNow;
+
+            // Telemetry so you can see what is happening
+            telemetry.addData("LimiterPos", "%.2f", limiterCurrentPos);
+            telemetry.addData("G1.X", xNow);
+            telemetry.addData("G1.Y", yNow);
         }
 
         // Stop the intake motor when the OpMode ends.  This ensures the
