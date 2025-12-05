@@ -175,6 +175,33 @@ public class DriverMode extends CustomLinearOp {
     private static final double AIM_SCAN_POWER        = 0.25; // how fast to scan
     private static final double AIM_SEARCH_LIMIT_DEG  = 90.0; // max search angle left/right
 
+    // Extra smoothing / hysteresis for turret control.
+    //  - AIM_LOCK_DEADBAND_DEG: inside this we treat it as "locked" and set motor power = 0.
+    //  - AIM_MOVE_DEADBAND_DEG: if error is bigger than this, we allow movement again.
+    private static final double AIM_LOCK_DEADBAND_DEG = 1.0;  // tight center band
+    private static final double AIM_MOVE_DEADBAND_DEG = 3.0;  // start moving if error bigger
+
+    // Low-pass filter for noisy yaw readings.
+    // NewYawFiltered = α * NewRaw + (1-α) * OldFiltered
+    private static final double AIM_YAW_FILTER_ALPHA = 0.3;
+
+    // How long we will "hold" the lock after the tag disappears
+    // before we go back to scanning.
+    private static final int AIM_LOST_FRAMES_THRESHOLD = 8;
+
+    // ---- Aimbot runtime state ----
+    private boolean aimHasLock = false;
+    private int aimFramesWithTag = 0;
+    private int aimFramesWithoutTag = 0;
+    private double aimFilteredYawDeg = 0.0;
+
+    // Shooter info that aimbot computes (distance -> power).
+    // We will use this in the normal launcher block instead of
+    // spinning the motor directly from updateAimbot().
+    private boolean aimHasTarget = false;
+    private double aimLastShooterPower = 1.0;
+
+
     // A/B edge detect (A=enable, B=disable)
     private boolean prevG2_A = false;
     private boolean prevG2_B = false;
@@ -220,18 +247,30 @@ public class DriverMode extends CustomLinearOp {
 
     // Auto-aim: G2.A = ON, G2.B = OFF.
     // When ON:
-    //  - The turret (Lazy Susan) keeps turning until it finds the right AprilTag.
-    //  - Once locked, it centers the tag and sets shooter power based on distance.
+    //  - The turret (Lazy Susan) scans until it finds the correct AprilTag.
+    //  - Once locked, it centers the tag and *remembers* the proper shooter power.
+    //  - We no longer spin the launcher motor here; we just compute power
+    //    and let the normal launcher code decide when to shoot.
     private void updateAimbot() {
         // 1) Read buttons from gamepad 2 to turn aimbot ON or OFF.
         boolean aNow = gamepad2.a;
         boolean bNow = gamepad2.b;
 
 
-        // If A was just pressed (rising edge), turn aimbot ON.
-        if (aNow && !prevG2_A) autoAimEnabled = true;
-        // If B was just pressed, turn aimbot OFF.
-        if (bNow && !prevG2_B) autoAimEnabled = false;
+        // If A was just pressed (rising edge), turn aimbot ON and reset state.
+        if (aNow && !prevG2_A) {
+            autoAimEnabled = true;
+            aimHasLock = false;
+            aimFramesWithTag = 0;
+            aimFramesWithoutTag = 0;
+            aimHasTarget = false;
+        }
+        // If B was just pressed, turn aimbot OFF and clear lock.
+        if (bNow && !prevG2_B) {
+            autoAimEnabled = false;
+            aimHasLock = false;
+            aimHasTarget = false;
+        }
 
 
         // Save current button states for next loop.
@@ -239,8 +278,7 @@ public class DriverMode extends CustomLinearOp {
         prevG2_B = bNow;
 
 
-        // 2) If aimbot is OFF, we do nothing here.
-        //    Driver still has manual control of the Lazy Susan in the main loop.
+        // 2) If aimbot is OFF, do nothing else here.
         if (!autoAimEnabled) {
             telemetry.addData("Aimbot", "OFF");
             return;
@@ -263,49 +301,97 @@ public class DriverMode extends CustomLinearOp {
             return;
         }
         if (atp == null) {
-            telemetry.addData("Aimbot", "Processor null");
+            telemetry.addData("Aimbot", "ON (no AprilTag pipeline)");
             return;
         }
 
 
-        // 5) Ask the processor for all current detections.
+        // 5) Ask the processor for all current detections and pick the best one
+        //    for the current alliance (red uses tag 24, blue uses tag 20).  [oai_citation:0‡DECODE_CM_Section9_V7.pdf](sediment://file_00000000afb471fd8cf92749e6da45f8)
         List<AprilTagDetection> dets = atp.getDetections();
-
-
-        // pickBestDetection() uses allianceIsRed and our RED/BLUE_TAG_IDS
-        // to pick the "best" tag for our alliance.
         AprilTagDetection tgt = pickBestDetection(dets);
 
 
-        // 6) If aimbot is ON but we do NOT see any valid tag yet,
-        //    we will SCAN left/right within ±AIM_SEARCH_LIMIT_DEG
-        //    to try to find the target.
+        // 6) If we do NOT see any valid tag this frame:
         if (tgt == null || tgt.ftcPose == null) {
+            aimHasTarget = false;
+            aimFramesWithTag = 0;
+
+
+            if (aimHasLock) {
+                // We recently had a lock – maybe we just lost it for a frame.
+                aimFramesWithoutTag++;
+                telemetry.addData("Aimbot", "ON (tag briefly lost)");
+
+
+                // For a few frames after losing it, hold still to avoid twitching.
+                if (aimFramesWithoutTag < AIM_LOST_FRAMES_THRESHOLD) {
+                    if (lazySusanMotor != null) {
+                        lazySusanMotor.setPower(0.0); // hold position
+                    }
+                    return;
+                }
+
+
+                // After too many lost frames, give up the lock and go back to search.
+                aimHasLock = false;
+            }
+
+
+            // No lock or lock truly lost -> full search mode.
             telemetry.addData("Aimbot", "ON (searching)");
-            updateAimbotSearch();  // new helper: slowly sweep the turret
-            return;                // stop here for this loop
+            updateAimbotSearch();  // slowly sweep the turret left/right
+            return;
         }
 
 
-        // 7) If we reach this point, we have a valid target.
-        //    Extract yaw (angle left/right) and range (distance) from the tag.
-        double yawDeg = tgt.ftcPose.yaw;             // + = target appears to the right
-        double rangeM = tgt.ftcPose.range * 0.0254;  // convert inches -> meters
+        // 7) We have a valid target this frame.
+        aimFramesWithoutTag = 0;
+        aimFramesWithTag++;
 
 
-        telemetry.addData("AIM yaw(deg)",   "%.1f", yawDeg);
-        telemetry.addData("AIM range(m)",   "%.2f", rangeM);
+        // Extract yaw (angle left/right) and range (distance) from the tag.
+        double yawRawDeg = tgt.ftcPose.yaw;               // + = target appears to the right
+        double rangeM    = tgt.ftcPose.range * 0.0254;    // inches -> meters
+
+
+        // Low-pass filter the yaw to remove jitter from the camera.
+        if (aimFramesWithTag == 1 && !aimHasLock) {
+            // First frame after reacquiring target – initialise filter.
+            aimFilteredYawDeg = yawRawDeg;
+        } else {
+            aimFilteredYawDeg = AIM_YAW_FILTER_ALPHA * yawRawDeg
+                    + (1.0 - AIM_YAW_FILTER_ALPHA) * aimFilteredYawDeg;
+        }
+
+
+        double yawDeg = aimFilteredYawDeg;
+
+
+        // Decide if we consider ourselves "locked".
+        if (!aimHasLock && Math.abs(yawDeg) <= AIM_MOVE_DEADBAND_DEG) {
+            aimHasLock = true;
+        }
+
+
+        telemetry.addData("Aimbot", aimHasLock ? "ON (locked)" : "ON (tracking)");
+        telemetry.addData("AIM yaw(raw/filtered)", "%.1f / %.1f", yawRawDeg, yawDeg);
+        telemetry.addData("AIM range(m)", "%.2f", rangeM);
 
 
         // --- Lazy Susan yaw correction ---
         if (lazySusanMotor != null) {
             double cmd = 0.0;
+            double error = yawDeg;
 
 
-            // Only move if we are outside the small deadband.
-            if (Math.abs(yawDeg) >= AIM_DEADBAND_DEG) {
+            // If we are very close to center, DO NOT drive the motor.
+            // This kills the “shaky” behavior when locked.
+            if (Math.abs(error) <= AIM_LOCK_DEADBAND_DEG) {
+                cmd = 0.0;
+            } else {
                 // Basic proportional controller: power is proportional to yaw error.
-                cmd = AIM_YAW_KP * yawDeg;
+                cmd = AIM_YAW_KP * error;
 
 
                 // Limit command to a safe range so the turret does not move too fast.
@@ -342,18 +428,11 @@ public class DriverMode extends CustomLinearOp {
         }
 
 
-        // --- Launcher power from distance ---
-        if (launcherMotor != null) {
-            // Use our helper to convert distance (meters) to shooter motor power.
-            double autoPower = computeAimbotShooterPower(rangeM);
-
-
-            // While aimbot is ON, we override manual shooter power.
-            launcherMotor.setPower(autoPower);
-
-
-            telemetry.addData("AIM shooterPower", "%.2f", autoPower);
-        }
+        // --- Shooter power from distance (just compute & store, do NOT spin here) ---
+        double autoPower = computeAimbotShooterPower(rangeM);
+        aimHasTarget = true;
+        aimLastShooterPower = autoPower;
+        telemetry.addData("AIM shooterPower (suggested)", "%.2f", autoPower);
     }
 
     /**
@@ -596,10 +675,19 @@ public class DriverMode extends CustomLinearOp {
 
         if (launcherMotor != null) {
             if (gamepad2.left_trigger > 0.05) {
+                // Reverse to clear balls or unjam
                 launcherMotor.setPower(-1.0);
             } else if (gamepad2.right_trigger > 0.05) {
-                launcherMotor.setPower(1.0);
+                // Normal shooting direction.
+                // If aimbot is ON and we currently have a valid tag,
+                // use the auto-calculated power from distance.
+                double power = 1.0;  // default manual power
+                if (autoAimEnabled && aimHasTarget) {
+                    power = aimLastShooterPower;
+                }
+                launcherMotor.setPower(power);
             } else {
+                // No trigger -> do not spin the launcher at all.
                 launcherMotor.setPower(0.0);
             }
         }
