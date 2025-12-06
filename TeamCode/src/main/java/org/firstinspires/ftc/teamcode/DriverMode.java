@@ -144,7 +144,6 @@ public class DriverMode extends CustomLinearOp {
     private static final double LAZY_GAIN          = 0.9;   // scales stick -> motor power
     private static final double LAZY_POWER_MAX     = 0.8;   // safety cap on power
 
-
     private int    lazyZeroTicks = 0;   // encoder value at start
     private double lazyTargetDeg = 0.0; // still used for telemetry/limits
     private double lazyStickFilt = 0.0; // smoothed stick value
@@ -173,7 +172,7 @@ public class DriverMode extends CustomLinearOp {
     // When aimbot is ON but no tag is visible, we will "scan" left/right
     // with the Lazy Susan to look for the target.
     private static final double AIM_SCAN_POWER        = 0.25; // how fast to scan
-    private static final double AIM_SEARCH_LIMIT_DEG  = 90.0; // max search angle left/right
+    private static final double AIM_SEARCH_LIMIT_DEG  = 180; // max search angle left/right
 
     // Extra smoothing / hysteresis for turret control.
     //  - AIM_LOCK_DEADBAND_DEG: inside this we treat it as "locked" and set motor power = 0.
