@@ -755,8 +755,8 @@ public class DriverMode extends CustomLinearOp {
 
         telemetry.addLine("Select: X=RED, B=BLUE, up=FAR, down=NEAR");
         while (!isStarted() && !isStopRequested()) {
-            if (gamepad1.x)  AutoSettings.set(AllianceColor.RED,  AutoSettings.getTeamSide(), false);
-            if (gamepad1.b)  AutoSettings.set(AllianceColor.BLUE, AutoSettings.getTeamSide(), false);
+            if (gamepad1.dpad_left)  AutoSettings.set(AllianceColor.RED,  AutoSettings.getTeamSide(), false);
+            if (gamepad1.dpad_right)  AutoSettings.set(AllianceColor.BLUE, AutoSettings.getTeamSide(), false);
             if (gamepad1.dpad_up)   AutoSettings.set(AutoSettings.getAlliance(), TeamSide.FAR, false);
             if (gamepad1.dpad_down) AutoSettings.set(AutoSettings.getAlliance(), TeamSide.NEAR, false);
             telemetry.addData("Alliance", AutoSettings.getAlliance());
