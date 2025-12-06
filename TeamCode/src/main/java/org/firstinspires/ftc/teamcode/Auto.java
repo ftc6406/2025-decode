@@ -12,6 +12,7 @@ import org.firstinspires.ftc.teamcode.AutoSettings;
 import static org.firstinspires.ftc.teamcode.AutoSettings.AllianceColor;
 import static org.firstinspires.ftc.teamcode.AutoSettings.TeamSide;
 
+
 @Autonomous(name = "Auto")
 public class Auto extends CustomLinearOp {
     /**

@@ -10,6 +10,7 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import java.util.List;
 import com.qualcomm.robotcore.hardware.Servo;
+import org.firstinspires.ftc.teamcode.hardwareSystems.LimiterServo;
 
 import org.firstinspires.ftc.teamcode.AutoSettings;
 import static org.firstinspires.ftc.teamcode.AutoSettings.AllianceColor;
@@ -75,6 +76,20 @@ public class DriverMode extends CustomLinearOp {
     private DcMotorEx lazySusanMotor;
     private DcMotorEx launcherMotor;
 
+    // ----- Limiter servo (shared between TeleOp and Auto) -----
+    /**
+     * Wrapper around the limiter servo hardware.
+     * Uses two preset positions: HOME and OUT (≈90 degrees).
+     */
+    private LimiterServo limiterServo;
+
+
+    // Positions for the limiter servo.
+    // You will tune these on the real robot so that OUT is about 90 degrees
+    // and HOME is the original position.
+    private static final double LIMITER_HOME_POS  = 0.25; // example
+    private static final double LIMITER_OUT_POS   = 0.10; // example
+
     /**
      * Current shooter power.  Drivers can switch between two preset
      * powers (e.g. mid‑range and long‑range) using D‑pad buttons on
@@ -105,34 +120,6 @@ public class DriverMode extends CustomLinearOp {
      * the call to {@code hardwareMap.get()} accordingly.
      */
     private DcMotorEx intakeMotor;
-
-    /**
-     * Servo for limiter mechanism.
-     * Standard 0.0–1.0 position servo.
-     *
-     * In the Robot Controller configuration, make sure you have
-     * a Servo named "limiterServo".
-     */
-    private Servo limiterServo;
-
-    /**
-     * Servo position presets (0.0–1.0).
-     *
-     * LIMITER_HOME_POS   = retracted / original position.
-     * LIMITER_TARGET_POS = “out” position, about 90° away from home.
-     *
-     * You MUST tune these on the robot.
-     * Start with something clearly different so you can see it move.
-     */
-    private static final double LIMITER_HOME_POS   = 0.20;  // clearly “in”
-    private static final double LIMITER_TARGET_POS = 0.80;  // clearly “out”
-
-    // Track what we last commanded (for telemetry / debugging).
-    private double limiterCurrentPos = LIMITER_HOME_POS;
-
-    // Edge-detection for Gamepad1 X/Y so one press = one action.
-    private boolean prevG1_X = false;
-    private boolean prevG1_Y = false;
 
     // --- Lazy Susan instant control tuning ---
 // Calibrate this once: ticksPerDeg = (tick change) / (measured degrees)
@@ -629,6 +616,28 @@ public class DriverMode extends CustomLinearOp {
             telemetry.addData("Back right wheel power",  backRightPower);
         }
 
+        // ===== GAMEPAD 1 LIMITER SERVO CONTROL =====
+        // X  -> move limiter OUT (≈90 degrees)
+        // Y  -> move limiter back HOME.
+        if (limiterServo != null) {
+            // When driver presses X on gamepad 1, extend the limiter.
+            if (gamepad1.x) {
+                limiterServo.setOut();
+            }
+
+
+            // When driver presses Y on gamepad 1, retract the limiter.
+            if (gamepad1.y) {
+                limiterServo.setHome();
+            }
+
+
+            // Telemetry so you can confirm the code is actually running.
+            telemetry.addData("LimiterPos", "%.2f", limiterServo.getPosition());
+            telemetry.addData("LimiterG1.X", gamepad1.x);
+            telemetry.addData("LimiterG1.Y", gamepad1.y);
+        }
+
         /* Webcam controls */
         // Save CPU resources; can resume streaming when needed.  When the
         // driver presses D‑pad down, stop streaming; D‑pad up resumes
@@ -877,17 +886,19 @@ public class DriverMode extends CustomLinearOp {
             telemetry.addLine("WARNING: Intake motor not found.\n" + e.getMessage());
         }
 
-        // Initialise the limiter servo.
-        // Make sure your configuration has a Servo device named "limiterServo".
+        // ----- Limiter servo init -----
         try {
-            limiterServo = hardwareMap.get(Servo.class, "limiterServo");
+            // Create the limiter servo wrapper using the shared hardware class.
+            // "limiterServo" must match the name in the RC config.
+            limiterServo = new LimiterServo(hardwareMap,
+                    "limiterServo",
+                    LIMITER_HOME_POS,
+                    LIMITER_OUT_POS);
 
-            // Start the limiter at its HOME position.
-            limiterServo.setPosition(LIMITER_HOME_POS);
 
             telemetry.addLine("Limiter servo initialised");
         } catch (Exception e) {
-            telemetry.addLine("WARNING: Limiter servo not found");
+            telemetry.addLine("WARNING: Limiter servo not found.\n" + e.getMessage());
         }
 
         /*
@@ -904,35 +915,6 @@ public class DriverMode extends CustomLinearOp {
                 telemetry.addLine("\nWARNING AN ERROR OCCURRED!!!");
                 telemetry.addLine(e.getMessage());
             }
-        }
-
-        // === Gamepad 1 servo control (Limiter ONLY) ===
-        // X  -> move limiter OUT (LIMITER_TARGET_POS)
-        // Y  -> move limiter IN  (LIMITER_HOME_POS)
-        if (limiterServo != null) {
-            boolean xNow = gamepad1.x;
-            boolean yNow = gamepad1.y;
-
-            // Rising edge on X: button just pressed this loop
-            if (xNow && !prevG1_X) {
-                limiterCurrentPos = LIMITER_TARGET_POS;
-                limiterServo.setPosition(LIMITER_TARGET_POS);
-            }
-
-            // Rising edge on Y: button just pressed this loop
-            if (yNow && !prevG1_Y) {
-                limiterCurrentPos = LIMITER_HOME_POS;
-                limiterServo.setPosition(LIMITER_HOME_POS);
-            }
-
-            // Save button states for next loop
-            prevG1_X = xNow;
-            prevG1_Y = yNow;
-
-            // Telemetry so you can see what is happening
-            telemetry.addData("LimiterPos", "%.2f", limiterCurrentPos);
-            telemetry.addData("G1.X", xNow);
-            telemetry.addData("G1.Y", yNow);
         }
 
         // Stop the intake motor when the OpMode ends.  This ensures the
