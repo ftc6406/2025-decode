@@ -139,7 +139,7 @@ public class DriverMode extends CustomLinearOp {
     // Guess for encoder ticks per revolution on the launcher shaft.
     // 28 is a common motor encoder CPR; 40 is your gear ratio.
     // You can tune this later if numbers look off.
-    private static final double LAUNCHER_TICKS_PER_REV = 28.0 * 40.0;
+    private static final double LAUNCHER_TICKS_PER_REV = 20.6 ;
 
     // Last computed RPM for telemetry
     private double lastLauncherRpm = 0.0;
@@ -653,15 +653,15 @@ public class DriverMode extends CustomLinearOp {
         // driver presses D‑pad down, stop streaming; D‑pad up resumes
         // streaming.  Check that WEBCAM is not null before calling its
         // methods.
-        if (gamepad1.dpad_down) {
-            if (WEBCAM != null) {
-                WEBCAM.getVisionPortal().stopLiveView();
-            }
-        } else if (gamepad1.dpad_up) {
-            if (WEBCAM != null) {
-                WEBCAM.getVisionPortal().resumeLiveView();
-            }
-        }
+//        if (gamepad1.dpad_down) {
+//            if (WEBCAM != null) {
+//                WEBCAM.getVisionPortal().stopLiveView();
+//            }
+//        } else if (gamepad1.dpad_up) {
+//            if (WEBCAM != null) {
+//                WEBCAM.getVisionPortal().resumeLiveView();
+//            }
+//        }
 
         // Note: If you see a "camera not identified" error on the Driver Station
         // telemetry, verify that your webcam is configured with the name
@@ -697,6 +697,7 @@ public class DriverMode extends CustomLinearOp {
             double ticksPerSecond = launcherMotor.getVelocity();
             double rpm = (ticksPerSecond / LAUNCHER_TICKS_PER_REV) * 60.0;
             lastLauncherRpm = rpm;
+            lastLauncherRpm = rpm;
 
 
             // Show launcher RPM on telemetry.
@@ -710,7 +711,7 @@ public class DriverMode extends CustomLinearOp {
                 // Normal shooting direction.
                 // If aimbot is ON and we currently have a valid tag,
                 // use the auto-calculated power from distance.
-                double power = 0.99;  // default manual power
+                double power = 1.0;  // default manual power
                 if (autoAimEnabled && aimHasTarget) {
                     power = aimLastShooterPower;
                 }
