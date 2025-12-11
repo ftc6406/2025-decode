@@ -135,6 +135,16 @@ public class DriverMode extends CustomLinearOp {
     private double lazyTargetDeg = 0.0; // still used for telemetry/limits
     private double lazyStickFilt = 0.0; // smoothed stick value
 
+    // --- Launcher RPM tracking ---
+    // Guess for encoder ticks per revolution on the launcher shaft.
+    // 28 is a common motor encoder CPR; 40 is your gear ratio.
+    // You can tune this later if numbers look off.
+    private static final double LAUNCHER_TICKS_PER_REV = 28.0 * 40.0;
+
+    // Last computed RPM for telemetry
+    private double lastLauncherRpm = 0.0;
+
+
     // --- Aimbot config ---
 // Replace with your real IDs for this season
     private static final int[] RED_TAG_IDS  = { 24 };
@@ -632,10 +642,10 @@ public class DriverMode extends CustomLinearOp {
             }
 
 
-            // Telemetry so you can confirm the code is actually running.
-            telemetry.addData("LimiterPos", "%.2f", limiterServo.getPosition());
-            telemetry.addData("LimiterG1.X", gamepad1.x);
-            telemetry.addData("LimiterG1.Y", gamepad1.y);
+//            // Telemetry so you can confirm the code is actually running.
+//            telemetry.addData("LimiterPos", "%.2f", limiterServo.getPosition());
+//            telemetry.addData("LimiterG1.X", gamepad1.x);
+//            telemetry.addData("LimiterG1.Y", gamepad1.y);
         }
 
         /* Webcam controls */
@@ -682,6 +692,17 @@ public class DriverMode extends CustomLinearOp {
         }
 
         if (launcherMotor != null) {
+            // Read encoder velocity in ticks/second and convert to RPM.
+            // RPM = (ticksPerSecond / ticksPerRev) * 60.
+            double ticksPerSecond = launcherMotor.getVelocity();
+            double rpm = (ticksPerSecond / LAUNCHER_TICKS_PER_REV) * 60.0;
+            lastLauncherRpm = rpm;
+
+
+            // Show launcher RPM on telemetry.
+            telemetry.addData("Launcher RPM", "%.0f", rpm);
+
+
             if (gamepad2.left_trigger > 0.05) {
                 // Reverse to clear balls or unjam
                 launcherMotor.setPower(-1.0);
@@ -695,9 +716,9 @@ public class DriverMode extends CustomLinearOp {
                 }
                 launcherMotor.setPower(power);
             } else if (gamepad2.right_bumper) {
-                launcherMotor.setPower(85);
+                launcherMotor.setPower(85);   // clipped to 1.0 internally
             } else if (gamepad2.left_bumper) {
-                launcherMotor.setPower(-85);
+                launcherMotor.setPower(-85);  // clipped to -1.0 internally
             } else {
                 // No trigger -> do not spin the launcher at all.
                 launcherMotor.setPower(0.0);
