@@ -645,11 +645,11 @@ public class DriverMode extends CustomLinearOp {
         // methods.
         if (gamepad1.dpad_down) {
             if (WEBCAM != null) {
-                WEBCAM.getVisionPortal().stopStreaming();
+                WEBCAM.getVisionPortal().stopLiveView();
             }
         } else if (gamepad1.dpad_up) {
             if (WEBCAM != null) {
-                WEBCAM.getVisionPortal().resumeStreaming();
+                WEBCAM.getVisionPortal().resumeLiveView();
             }
         }
 
@@ -689,11 +689,15 @@ public class DriverMode extends CustomLinearOp {
                 // Normal shooting direction.
                 // If aimbot is ON and we currently have a valid tag,
                 // use the auto-calculated power from distance.
-                double power = 1.0;  // default manual power
+                double power = 0.99;  // default manual power
                 if (autoAimEnabled && aimHasTarget) {
                     power = aimLastShooterPower;
                 }
                 launcherMotor.setPower(power);
+            } else if (gamepad2.right_bumper) {
+                launcherMotor.setPower(85);
+            } else if (gamepad2.left_bumper) {
+                launcherMotor.setPower(-85);
             } else {
                 // No trigger -> do not spin the launcher at all.
                 launcherMotor.setPower(0.0);
@@ -752,8 +756,6 @@ public class DriverMode extends CustomLinearOp {
 
     @Override
     public void runOpMode() {
-        super.runOpMode();
-
         AutoSettings.readFromFile();
         applyAllianceToWebcam();
         AllianceColor ac = AutoSettings.getAlliance();
@@ -900,13 +902,6 @@ public class DriverMode extends CustomLinearOp {
         } catch (Exception e) {
             telemetry.addLine("WARNING: Limiter servo not found.\n" + e.getMessage());
         }
-
-        /*
-        cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
-                "cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName()
-        );
-        WEBCAM.getVisionPortal().stopStreaming();
-         */
 
         while (opModeIsActive()) {
             try {

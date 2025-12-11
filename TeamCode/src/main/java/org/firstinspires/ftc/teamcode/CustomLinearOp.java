@@ -164,17 +164,17 @@ public class CustomLinearOp extends LinearOpMode {
     /**
      * Sleeps the robot while any motors are running.
      */
-    public void autoSleep() {
-        autoSleep(getAllDcMotors());
-    }
-
-    /**
-     * Sleeps the robot while the given motors are running.
-     * @param motors The motors to wait for.
-     */
-    public void autoSleep(DcMotor... motors) {
-        autoSleep(new HashSet<>(Arrays.asList(motors)));
-    }
+//    public void autoSleep() {
+//        autoSleep(getAllDcMotors());
+//    }
+//
+//    /**
+//     * Sleeps the robot while the given motors are running.
+//     * @param motors The motors to wait for.
+//     */
+//    public void autoSleep(DcMotor... motors) {
+//        autoSleep(new HashSet<>(Arrays.asList(motors)));
+//    }
 
     /**
      * Sleeps the robot while the given motors are running.
@@ -183,9 +183,9 @@ public class CustomLinearOp extends LinearOpMode {
      */
     public void autoSleep(HashSet<DcMotor> motors) {
         // Sleep while any of the motors are still running.
-        while (motors.stream().anyMatch(DcMotor::isBusy)) {
-            sleep(1);
-        }
+//        while (motors.stream().anyMatch(DcMotor::isBusy)) {
+//            sleep(1);
+//        }
     }
 
     /**
