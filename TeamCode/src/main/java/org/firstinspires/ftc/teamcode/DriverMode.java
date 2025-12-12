@@ -778,6 +778,8 @@ public class DriverMode extends CustomLinearOp {
 
     @Override
     public void runOpMode() {
+        super.runOpMode();
+
         AutoSettings.readFromFile();
         applyAllianceToWebcam();
         AllianceColor ac = AutoSettings.getAlliance();
