@@ -83,12 +83,19 @@ public class DriverMode extends CustomLinearOp {
      */
     private LimiterServo limiterServo;
 
-
     // Positions for the limiter servo.
     // You will tune these on the real robot so that OUT is about 90 degrees
     // and HOME is the original position.
-    private static final double LIMITER_HOME_POS  = 0.25; // example
-    private static final double LIMITER_OUT_POS   = 0.10; // example
+    private static final double LIMITER_HOME_POS  = 0.25; // 25 degrees
+    private static final double LIMITER_OUT_POS   = 0.10; // 10 degrees
+
+    /**
+     * Servo to control launch angle of balls
+     */
+    private LimiterServo hoodServo;
+
+    private static final double HOOD_HOME_POS = 0; // 0 degrees
+    private static final double HOOD_OUT_POS = 0.1; // 1 degrees
 
     /**
      * Current shooter power.  Drivers can switch between two preset
@@ -648,6 +655,20 @@ public class DriverMode extends CustomLinearOp {
 //            telemetry.addData("LimiterG1.Y", gamepad1.y);
         }
 
+
+
+        if (hoodServo != null) {
+            if (gamepad2.dpad_left) {
+                hoodServo.setOut();
+
+            } else if (gamepad2.dpad_right) {
+                hoodServo.setHome();
+
+            }
+
+
+        }
+
         /* Webcam controls */
         // Save CPU resources; can resume streaming when needed.  When the
         // driver presses D‑pad down, stop streaming; D‑pad up resumes
@@ -715,9 +736,11 @@ public class DriverMode extends CustomLinearOp {
                 if (autoAimEnabled && aimHasTarget) {
                     power = aimLastShooterPower;
                 }
+
+
                 launcherMotor.setPower(power);
             } else if (gamepad2.right_bumper) {
-                launcherMotor.setPower(0.6);   // clipped to 1.0 internally
+                launcherMotor.setPower(0.65);   // clipped to 1.0 internally
             } else if (gamepad2.left_bumper) {
                 launcherMotor.setPower(-85);  // clipped to -1.0 internally
             } else {
@@ -923,8 +946,26 @@ public class DriverMode extends CustomLinearOp {
 
 
             telemetry.addLine("Limiter servo initialised");
+
         } catch (Exception e) {
             telemetry.addLine("WARNING: Limiter servo not found.\n" + e.getMessage());
+
+        }
+
+        try {
+            // Create the limiter servo wrapper using the shared hardware class.
+            // "hoodServo" must match the name in the RC config.
+            hoodServo = new LimiterServo(hardwareMap,
+                    "hoodServo",
+                    HOOD_HOME_POS,
+                    HOOD_OUT_POS);
+
+
+            telemetry.addLine("Hood servo initialised");
+
+        } catch (Exception e) {
+            telemetry.addLine("WARNING: Hood servo not found.\n" + e.getMessage());
+
         }
 
         while (opModeIsActive()) {
