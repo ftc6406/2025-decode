@@ -717,7 +717,7 @@ public class DriverMode extends CustomLinearOp {
                 }
                 launcherMotor.setPower(power);
             } else if (gamepad2.right_bumper) {
-                launcherMotor.setPower(85);   // clipped to 1.0 internally
+                launcherMotor.setPower(0.6);   // clipped to 1.0 internally
             } else if (gamepad2.left_bumper) {
                 launcherMotor.setPower(-85);  // clipped to -1.0 internally
             } else {
