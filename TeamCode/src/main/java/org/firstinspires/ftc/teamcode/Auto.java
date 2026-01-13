@@ -73,9 +73,10 @@ public class Auto extends CustomLinearOp {
 
 
         if (launcherMotor != null) {
-            telemetry.addLine("Spinning launcher at full power");
+//            telemetry.addLine("Spinning launcher at full power");
+            telemetry.addLine("Spinning launcher at 0.65 power");
             telemetry.update();
-            launcherMotor.setPower(1.0);
+            launcherMotor.setPower(0.65);
         } else {
             telemetry.addLine("No launcherMotor – skipping shooting");
             telemetry.update();
@@ -99,7 +100,7 @@ public class Auto extends CustomLinearOp {
             if (intakeMotor != null) {
                 // If this direction pulls balls IN instead of shooting,
                 // change to intakeMotor.setPower(-1.0);
-                intakeMotor.setPower(-1.0);
+                intakeMotor.setPower(-0.8);
             }
 
 
