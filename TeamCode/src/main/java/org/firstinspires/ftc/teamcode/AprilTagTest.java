@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.annotation.SuppressLint;
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -18,6 +20,7 @@ public class AprilTagTest extends LinearOpMode {
     private MecanumWheels WHEELS;
     private Webcam WEBCAM;
 
+    @SuppressLint("DefaultLocale")
     private void printAllAprilTags() {
         // Step through the list of detections and display info for each one.
         for (AprilTagDetection detection : WEBCAM.getAprilTagDetections()) {

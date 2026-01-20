@@ -157,6 +157,21 @@ public class DriverMode extends CustomLinearOp {
     private static final int[] RED_TAG_IDS  = { 24 };
     private static final int[] BLUE_TAG_IDS = { 20 };
 
+    // --- Pixel-based turret aiming
+    // motor power at full-screen error (tune 0.4 - 1.2)
+    private static final double AIM_PIX_KP = 1.2;
+    // within this many pixels -> stop motor (reduces shake)
+    private static final double AIM_LOCK_DEADBAND_PX = 18.0;
+    // must exceed this to "start moving" again (hysteresis)
+    private static final double AIM_MOVE_DEADBAND_PX = 35.0;
+    // 0..1, higher = more responsive, lower = smoother
+    private static final double AIM_ERR_FILTER_ALPHA = 0.20;
+
+    // tune 0.15–0.35
+    private static final double AIM_REACQUIRE_POWER = 0.22;
+    // give it time before scanning
+    private static final int AIM_LOST_FRAMES_THRESHOLD = 18;
+
     // Proportional yaw -> Lazy Susan power (same as before)
     private static final double AIM_YAW_KP       = 0.02; // tune 0.015–0.03
     private static final double AIM_POWER_MAX    = 0.80;
@@ -188,10 +203,6 @@ public class DriverMode extends CustomLinearOp {
     // NewYawFiltered = α * NewRaw + (1-α) * OldFiltered
     private static final double AIM_YAW_FILTER_ALPHA = 0.3;
 
-    // How long we will "hold" the lock after the tag disappears
-    // before we go back to scanning.
-    private static final int AIM_LOST_FRAMES_THRESHOLD = 8;
-
     // ---- Aimbot runtime state ----
     private boolean aimHasLock = false;
     private int aimFramesWithTag = 0;
@@ -204,6 +215,12 @@ public class DriverMode extends CustomLinearOp {
     private boolean aimHasTarget = false;
     private double aimLastShooterPower = 1.0;
 
+    // --- Pixel error filtering state ---
+    private double aimFilteredErrPx = 0.0;
+
+    private double aimLastErrorPx = 0.0;
+    private double aimLastTurretCmd = 0.0;
+    private int aimLockedTagId = -1;
 
     // A/B edge detect (A=enable, B=disable)
     private boolean prevG2_A = false;
@@ -215,34 +232,47 @@ public class DriverMode extends CustomLinearOp {
     // -1  = scanning to the left
     private int aimScanDirection = 1;
 
-    // Pick “best” detection: prefer alliance IDs, then smallest |yaw|
+    // Pick “best” detection: prefer alliance IDs
     private AprilTagDetection pickBestDetection(List<AprilTagDetection> dets) {
         if (dets == null || dets.isEmpty()) return null;
 
         int[] ids = allianceIsRed ? RED_TAG_IDS : BLUE_TAG_IDS;
 
+        // Need frame width for pixel scoring; fall back safely if webcam is null.
+        double frameW = (WEBCAM != null) ? WEBCAM.getWidthPx() : 800.0;
+        double cx = frameW / 2.0;
+
         AprilTagDetection best = null;
         double bestScore = Double.NEGATIVE_INFINITY;
 
         for (AprilTagDetection d : dets) {
-            if (d == null || d.ftcPose == null) continue;
+            if (d == null || d.ftcPose == null || d.center == null) continue;
 
             boolean idMatch = false;
-            for (int id : ids) if (d.id == id) { idMatch = true; break; }
+            for (int id : ids) {
+                if (d.id == id) { idMatch = true; break; }
+            }
             if (!idMatch) continue;
 
-            double yaw = Math.abs(d.ftcPose.yaw);  // deg
-            double range = d.ftcPose.range * 0.0254; // inches -> meters
-            double score = -(yaw) - 0.2 * range;     // prefer small yaw & closer
-            if (score > bestScore) { bestScore = score; best = d; }
+            // Prefer detections closest to camera center, then closer range.
+            double errPx = Math.abs(d.center.x - cx);
+            double rangeM = d.ftcPose.range * 0.0254; // inches -> meters
+
+            // Higher score is better: small pixel error dominates.
+            double score = -errPx - (25.0 * rangeM);
+
+            if (score > bestScore) {
+                bestScore = score;
+                best = d;
+            }
         }
 
         if (best != null) return best;
 
-        // Fallback: smallest |yaw|
+        // Fallback: choose smallest pixel error among all detections
         for (AprilTagDetection d : dets) {
-            if (d == null || d.ftcPose == null) continue;
-            double score = -Math.abs(d.ftcPose.yaw);
+            if (d == null || d.center == null) continue;
+            double score = -Math.abs(d.center.x - cx);
             if (score > bestScore) { bestScore = score; best = d; }
         }
         return best;
@@ -320,97 +350,113 @@ public class DriverMode extends CustomLinearOp {
             aimHasTarget = false;
             aimFramesWithTag = 0;
 
-
-            if (aimHasLock) {
-                // We recently had a lock – maybe we just lost it for a frame.
+            // If we had a lock, do NOT instantly go to full scan.
+            // Instead, keep turning in the last known correct direction for a bit.
+            if (aimHasLock || aimLockedTagId != -1) {
                 aimFramesWithoutTag++;
-                telemetry.addData("Aimbot", "ON (tag briefly lost)");
+                telemetry.addData("Aimbot", "ON (reacquiring)");
 
+                // Keep following for a while before giving up.
+                if (lazySusanMotor != null && aimFramesWithoutTag <= AIM_LOST_FRAMES_THRESHOLD) {
 
-                // For a few frames after losing it, hold still to avoid twitching.
-                if (aimFramesWithoutTag < AIM_LOST_FRAMES_THRESHOLD) {
-                    if (lazySusanMotor != null) {
-                        lazySusanMotor.setPower(0.0); // hold position
+                    // Use last known motor direction first (best),
+                    // else fallback to last error sign,
+                    // else fallback to scan direction.
+                    double dir = Math.signum(aimLastTurretCmd);
+                    if (dir == 0.0) dir = Math.signum(aimLastErrorPx);
+                    if (dir == 0.0) dir = aimScanDirection;
+
+                    double cmd = dir * AIM_REACQUIRE_POWER;
+
+                    // Clamp for safety
+                    if (cmd >  AIM_POWER_MAX) cmd =  AIM_POWER_MAX;
+                    if (cmd < -AIM_POWER_MAX) cmd = -AIM_POWER_MAX;
+
+                    if (lazySusanMotor.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
+                        lazySusanMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                     }
+
+                    lazySusanMotor.setPower(cmd);
+                    telemetry.addData("AIM reacqCmd", "%.2f", cmd);
                     return;
                 }
 
-
-                // After too many lost frames, give up the lock and go back to search.
+                // Too many lost frames: give up lock and go back to full scan.
                 aimHasLock = false;
+                aimLockedTagId = -1;
             }
 
-
-            // No lock or lock truly lost -> full search mode.
             telemetry.addData("Aimbot", "ON (searching)");
-            updateAimbotSearch();  // slowly sweep the turret left/right
+            updateAimbotSearch();
             return;
         }
-
 
         // 7) We have a valid target this frame.
         aimFramesWithoutTag = 0;
         aimFramesWithTag++;
 
-
         // Extract yaw (angle left/right) and range (distance) from the tag.
         double yawRawDeg = tgt.ftcPose.yaw;               // + = target appears to the right
         double rangeM    = tgt.ftcPose.range * 0.0254;    // inches -> meters
+        // --- Pixel error (center.x relative to camera center) ---
+        double frameW = WEBCAM.getWidthPx();
+        double cx = frameW / 2.0;
 
 
-        // Low-pass filter the yaw to remove jitter from the camera.
+        // Positive errorPx means tag is to the RIGHT of center.
+        // If your turret turns the wrong direction, flip the sign of errorPx.
+        double errorPxRaw = cx - tgt.center.x;
+
+
+        // Low-pass filter the pixel error to reduce jitter.
         if (aimFramesWithTag == 1 && !aimHasLock) {
-            // First frame after reacquiring target – initialise filter.
-            aimFilteredYawDeg = yawRawDeg;
+            aimFilteredErrPx = errorPxRaw;
         } else {
-            aimFilteredYawDeg = AIM_YAW_FILTER_ALPHA * yawRawDeg
-                    + (1.0 - AIM_YAW_FILTER_ALPHA) * aimFilteredYawDeg;
+            aimFilteredErrPx = AIM_ERR_FILTER_ALPHA * errorPxRaw
+                    + (1.0 - AIM_ERR_FILTER_ALPHA) * aimFilteredErrPx;
         }
 
 
-        double yawDeg = aimFilteredYawDeg;
+        double errorPx = aimFilteredErrPx;
 
 
-        // Decide if we consider ourselves "locked".
-        if (!aimHasLock && Math.abs(yawDeg) <= AIM_MOVE_DEADBAND_DEG) {
+        // Lock logic (hysteresis):
+        if (!aimHasLock && Math.abs(errorPx) <= AIM_MOVE_DEADBAND_PX) {
             aimHasLock = true;
+            aimLockedTagId = tgt.id;
         }
-
 
         telemetry.addData("Aimbot", aimHasLock ? "ON (locked)" : "ON (tracking)");
-        telemetry.addData("AIM yaw(raw/filtered)", "%.1f / %.1f", yawRawDeg, yawDeg);
-        telemetry.addData("AIM range(m)", "%.2f", rangeM);
+        telemetry.addData("AIM errPx(raw/filt)", "%.1f / %.1f", errorPxRaw, errorPx);
+        telemetry.addData("AIM centerX", "%.1f", tgt.center.x);
 
 
-        // --- Lazy Susan yaw correction ---
+        // --- Turret motor command (proportional to pixel error) ---
         if (lazySusanMotor != null) {
-            double cmd = 0.0;
-            double error = yawDeg;
+            double cmd;
 
 
-            // If we are very close to center, DO NOT drive the motor.
-            // This kills the “shaky” behavior when locked.
-            if (Math.abs(error) <= AIM_LOCK_DEADBAND_DEG) {
+            // Stop in the tight lock band to eliminate shaking.
+            if (Math.abs(errorPx) <= AIM_LOCK_DEADBAND_PX) {
                 cmd = 0.0;
             } else {
-                // Basic proportional controller: power is proportional to yaw error.
-                cmd = AIM_YAW_KP * error;
+                // Normalize error to [-1..1] then scale to motor power
+                double norm = errorPx / cx;  // cx = half-width
+                cmd = AIM_PIX_KP * norm;
 
 
-                // Limit command to a safe range so the turret does not move too fast.
+                // Clamp to safe range
                 if (cmd >  AIM_POWER_MAX) cmd =  AIM_POWER_MAX;
                 if (cmd < -AIM_POWER_MAX) cmd = -AIM_POWER_MAX;
 
 
-                // Soft-limit near the mechanical bounds using encoder math.
+                // Soft-limit near mechanical bounds using encoder math.
                 int ticksNow = lazySusanMotor.getCurrentPosition();
                 double angleNowDeg = (ticksNow - lazyZeroTicks) / LAZY_TICKS_PER_DEG;
 
 
                 double margin = LAZY_MAX_DEG - Math.abs(angleNowDeg);
                 if (margin <= 0) {
-                    // We are at or beyond the allowed range.
-                    // If we are trying to push further OUT, set power to 0.
                     boolean pushingOut =
                             (angleNowDeg >=  LAZY_MAX_DEG && cmd > 0) ||
                                     (angleNowDeg <= -LAZY_MAX_DEG && cmd < 0);
@@ -418,16 +464,18 @@ public class DriverMode extends CustomLinearOp {
                 }
 
 
-                // Make sure the motor is in encoder mode for instant response.
                 if (lazySusanMotor.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
                     lazySusanMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                 }
             }
 
 
-            // Send the final command to the Lazy Susan motor.
             lazySusanMotor.setPower(cmd);
-            telemetry.addData("AIM susanCmd", "%.2f", cmd);
+
+            aimLastTurretCmd = cmd;
+            aimLastErrorPx = errorPx;
+
+            telemetry.addData("AIM turretCmd", "%.2f", cmd);
         }
 
 

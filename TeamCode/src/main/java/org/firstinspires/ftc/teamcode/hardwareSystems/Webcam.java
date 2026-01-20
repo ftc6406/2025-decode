@@ -31,6 +31,10 @@ public class Webcam {
     // Processor that finds the predominant color in a region of interest.
     private final PredominantColorProcessor colorProcessor;
 
+    // Stores camera resolution so other code can compute pixel error
+    private final int widthPx;
+    private final int heightPx;
+
 
     // Alliance or team color you want to remember for this webcam (used by your code).
     private Color targetColor;
@@ -65,6 +69,9 @@ public class Webcam {
         // Save pose adjustment values (reference is stored directly).
         this.poseAdjust = poseAdjust;
 
+        // Saves resolution for pixel-based aiming
+        this.widthPx  = resolution[0];
+        this.heightPx = resolution[1];
 
         // No target color selected by default.
         this.targetColor = null;
@@ -130,6 +137,19 @@ public class Webcam {
         return colorProcessor;
     }
 
+    // Allows other code to read camera resolution
+    public int getWidthPx() {
+        return widthPx;
+    }
+
+    public int getHeightPx() {
+        return heightPx;
+    }
+
+    // Tuning helper
+    public void setAprilTagDecimation(float decimation) {
+        aprilTag.setDecimation(2.0f);
+    }
 
     // Return the latest color analysis from the predominant color processor.
     // May be null if no frame has been processed yet.
