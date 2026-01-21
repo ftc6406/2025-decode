@@ -9,7 +9,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import org.firstinspires.ftc.teamcode.CustomLinearOp;
 
 
-@Autonomous(name = "Auto")
+@Autonomous(name = "RedAuto")
 public class Auto extends CustomLinearOp {
 
 
@@ -125,17 +125,27 @@ public class Auto extends CustomLinearOp {
 
 
         if (WHEELS != null) {
-            telemetry.addData("Step", "Driving into launch zone");
-            telemetry.addData("Forward (in)", FORWARD_TO_LAUNCH_ZONE_INCHES);
-            telemetry.update();
+            // Access the individual motors and set their powers to zero.
+            org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels mech =
+                    (org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) WHEELS;
 
-
-            // No strafe, just forward/back
-            WHEELS.driveDistance(0.0, FORWARD_TO_LAUNCH_ZONE_INCHES);
+            mech.getFrontLeftMotor().setPower(-1);
+            mech.getFrontRightMotor().setPower(1);
+            mech.getBackLeftMotor().setPower(1);
+            mech.getBackRightMotor().setPower(-1);
+            sleep(5000);
+//            telemetry.addData("Step", "Driving into launch zone");
+//            telemetry.addData("Forward (in)", FORWARD_TO_LAUNCH_ZONE_INCHES);
+//            telemetry.update();
+//
+//
+//            // No strafe, just forward/back
+//            WHEELS.driveDistance(0.0, FORWARD_TO_LAUNCH_ZONE_INCHES);
 
         } else {
             telemetry.addLine("WARNING: WHEELS is null – cannot drive.");
             telemetry.update();
+
         }
 
         // ===========================
@@ -146,6 +156,7 @@ public class Auto extends CustomLinearOp {
         if (intakeMotor != null) {
             intakeMotor.setPower(0.0);
         }
+
         if (launcherMotor != null) {
             launcherMotor.setPower(0.0);
         }
