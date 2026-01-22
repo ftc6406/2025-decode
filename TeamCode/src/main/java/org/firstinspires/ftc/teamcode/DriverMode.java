@@ -18,6 +18,8 @@ import static org.firstinspires.ftc.teamcode.AutoSettings.TeamSide;
 
 import org.firstinspires.ftc.teamcode.hardwareSystems.Webcam; // for Color
 
+import com.acmerobotics.dashboard.FtcDashboard;
+
 @TeleOp(name = "DriverMode")
 public class DriverMode extends CustomLinearOp {
     // TODO: Replace the driving sensitivity with an appropriate level of sensitivity.
@@ -96,6 +98,9 @@ public class DriverMode extends CustomLinearOp {
 
     private static final double HOOD_HOME_POS = 0; // 0 degrees
     private static final double HOOD_OUT_POS = 0.1; // 1 degrees
+
+    private boolean cameraStreamEnabled = true;  // set false if you want it off by default
+    private boolean lastToggleBtn = false;
 
     /**
      * Current shooter power.  Drivers can switch between two preset
@@ -850,6 +855,20 @@ public class DriverMode extends CustomLinearOp {
     @Override
     public void runOpMode() {
         super.runOpMode();
+        if (cameraStreamEnabled) {
+            FtcDashboard.getInstance().startCameraStream(WEBCAM.getVisionPortal(), 0);
+        }
+
+        boolean toggleBtn = gamepad2.dpad_up;
+        if (toggleBtn && !lastToggleBtn) {
+            cameraStreamEnabled = !cameraStreamEnabled;
+            if (cameraStreamEnabled) {
+                FtcDashboard.getInstance().startCameraStream(WEBCAM.getVisionPortal(), 0);
+            } else {
+                FtcDashboard.getInstance().stopCameraStream();
+            }
+        }
+        lastToggleBtn = toggleBtn;
 
         AutoSettings.readFromFile();
         applyAllianceToWebcam();
