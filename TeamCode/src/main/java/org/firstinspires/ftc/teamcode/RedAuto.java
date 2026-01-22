@@ -6,11 +6,9 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-import org.firstinspires.ftc.teamcode.CustomLinearOp;
-
 
 @Autonomous(name = "RedAuto")
-public class Auto extends CustomLinearOp {
+public class RedAuto extends CustomLinearOp {
 
 
     // Shooter / launcher motor for firing into the goal.
