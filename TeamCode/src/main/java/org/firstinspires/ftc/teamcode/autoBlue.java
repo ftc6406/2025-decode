@@ -10,7 +10,7 @@ import org.firstinspires.ftc.teamcode.CustomLinearOp;
 
 
 @Autonomous(name = "RedAuto")
-public class Auto extends CustomLinearOp {
+public class autoBlueC extends CustomLinearOp {
 
 
     // Shooter / launcher motor for firing into the goal.
