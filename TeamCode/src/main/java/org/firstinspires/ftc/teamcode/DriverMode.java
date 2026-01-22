@@ -185,13 +185,33 @@ public class DriverMode extends CustomLinearOp {
     // Distance-based shooter power:
     // We want full power at about 12 ft (≈ 3.7 m),
     // and a bit less power as we get closer to the goal.
-    private static final double AIM_RANGE_NEAR_M = 0.70; // very close to goal (~2.3 ft)
-    private static final double AIM_RANGE_FAR_M  = 3.70; // about 12 ft from goal
+// --- Shooter power calibration (tune these on the real robot) ---
+//
+// AprilTag "range" is measured from the CAMERA.
+// Your ball leaves from the SHOOTER, which is usually offset.
+// These two numbers correct that so the distance better matches reality.
+    private static final double AIM_RANGE_SCALE  = 1.00;   // usually 1.00 (only change if tag range is systematically scaled wrong)
+    private static final double AIM_RANGE_OFFSET_M = -0.15; // meters: camera->shooter offset along the shooting direction
+// Example: if camera is 15 cm BEHIND the shooter exit, offset should be negative (~ -0.15).
+// If camera is 15 cm IN FRONT of shooter exit, offset should be positive (+0.15).
 
-    // Shooter power values at those distances.
-    // You can tune these numbers on the robot without changing any code.
-    private static final double AIM_PWR_NEAR = 0.80; // power when very close
-    private static final double AIM_PWR_FAR  = 1.00; // power at 12 ft
+
+    // A piecewise calibration curve: distance (meters) -> shooter power
+// Add points as you test. More points = more accurate.
+    private static final double[] AIM_CAL_DIST_M = {
+            0.70,  // very close
+            1.50,  // mid
+            2.50,  // farther
+            3.70   // far
+    };
+
+
+    private static final double[] AIM_CAL_PWR = {
+            0.80,  // power at 0.70 m
+            0.88,  // power at 1.50 m
+            0.95,  // power at 2.50 m
+            1.00   // power at 3.70 m
+    };
 
     // When aimbot is ON but no tag is visible, we will "scan" left/right
     // with the Lazy Susan to look for the target.
@@ -407,6 +427,9 @@ public class DriverMode extends CustomLinearOp {
         double frameW = WEBCAM.getWidthPx();
         double cx = frameW / 2.0;
 
+        telemetry.addData("AIM range(in)", "%.1f", tgt.ftcPose.range);
+        telemetry.addData("AIM range(m)", "%.2f", rangeM);
+        telemetry.addData("AIM corrected(m)", "%.2f", (rangeM * AIM_RANGE_SCALE) + AIM_RANGE_OFFSET_M);
 
         // Positive errorPx means tag is to the RIGHT of center.
         // If your turret turns the wrong direction, flip the sign of errorPx.
@@ -500,28 +523,54 @@ public class DriverMode extends CustomLinearOp {
      * Everything in between is smoothly blended.
      */
     private double computeAimbotShooterPower(double rangeM) {
-        // If distance looks crazy (NaN or infinite), use a safe middle power.
+        // If distance looks crazy, fall back to a safe value.
         if (Double.isNaN(rangeM) || Double.isInfinite(rangeM)) {
-            return 0.90; // reasonable default if we do not trust the distance
+            return 0.90;
         }
 
-        // Clamp distance between our near and far tuning distances.
-        double clamped = rangeM;
-        if (clamped < AIM_RANGE_NEAR_M) clamped = AIM_RANGE_NEAR_M;
-        if (clamped > AIM_RANGE_FAR_M)  clamped = AIM_RANGE_FAR_M;
 
-        // t goes from 0 (near) to 1 (far).
-        double t = (clamped - AIM_RANGE_NEAR_M) /
-                (AIM_RANGE_FAR_M - AIM_RANGE_NEAR_M);
+        // Correct the camera-based distance so it better matches shooter distance.
+        double corrected = (rangeM * AIM_RANGE_SCALE) + AIM_RANGE_OFFSET_M;
 
-        // Linearly interpolate power between near and far.
-        double power = AIM_PWR_NEAR + t * (AIM_PWR_FAR - AIM_PWR_NEAR);
 
-        // Final safety clamp between 0 and 1.
+        // Piecewise-linear interpolation through the calibration table.
+        double power = interp1D(corrected, AIM_CAL_DIST_M, AIM_CAL_PWR);
+
+
+        // Safety clamp.
         if (power < 0.0) power = 0.0;
         if (power > 1.0) power = 1.0;
 
+
         return power;
+    }
+
+
+    /**
+     * 1D piecewise-linear interpolation.
+     * If x is below xs[0], returns ys[0].
+     * If x is above xs[last], returns ys[last].
+     */
+    private double interp1D(double x, double[] xs, double[] ys) {
+        if (xs == null || ys == null || xs.length < 2 || ys.length != xs.length) {
+            return 0.90; // safe fallback
+        }
+
+
+        if (x <= xs[0]) return ys[0];
+        int last = xs.length - 1;
+        if (x >= xs[last]) return ys[last];
+
+
+        for (int i = 0; i < last; i++) {
+            double x0 = xs[i];
+            double x1 = xs[i + 1];
+            if (x >= x0 && x <= x1) {
+                double t = (x - x0) / (x1 - x0);
+                return ys[i] + t * (ys[i + 1] - ys[i]);
+            }
+        }
+        return ys[last];
     }
 
     /**
