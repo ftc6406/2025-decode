@@ -1,14 +1,18 @@
-package org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.devicemanagement;
+package org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.inputanalysis;
 
+import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.devicemanagement.EventData;
+import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.devicemanagement.InputReader;
+import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.devicemanagement.Mouse;
 import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.eventclassification.EventTypes;
 import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.eventclassification.eventcodes.Rel;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.inputanalysis.EventFileFilterer;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.inputanalysis.EventFilter;
+
+
+// In original system, they consume data, leading to inaccuracies in both.
 
 public class MouseMotionTracker implements Runnable {
     // variable used to control termination of thread
     private volatile boolean stop = false;
-    
+
     private final Mouse mouse;
 
     // private final InputReader reader;
@@ -16,7 +20,7 @@ public class MouseMotionTracker implements Runnable {
 
     private final EventFilter xFilter;
     private final EventFilter yFilter;
-    
+
     private final Thread readerRunner;
     // private final EventFileFilterer xValues;
     // private final EventFileFilterer yValues;
@@ -30,9 +34,9 @@ public class MouseMotionTracker implements Runnable {
 
     public MouseMotionTracker(Mouse mouse, double[] start) {
         this.mouse = mouse;
-        
+
         eventFilterer = new EventFileFilterer(
-            new InputReader(this.mouse.getDevice().getHandlerFile())
+                new InputReader(this.mouse.getDevice().getHandlerFile())
         );
 
         // Create data filters for x and y
@@ -42,8 +46,8 @@ public class MouseMotionTracker implements Runnable {
         // Add and register filters to event reader
         eventFilterer.addFilter(xFilter);
         eventFilterer.addFilter(yFilter);
-        
-        
+
+
 
         // If start is null, set initial displacement to 0
         // Otherwise, set it to the values of the array
@@ -86,25 +90,25 @@ public class MouseMotionTracker implements Runnable {
                 // Convert the value of the event associated with the x filter
                 // to meters and add to x displacement
                 motionData[0][0] += mouseCountsToMeters(
-                    eventFilterer.getData(xFilter).getValue()
+                        eventFilterer.getData(xFilter).getValue()
                 );
 
             }
-            
+
             // If there is any data associated with the y filter
             if (eventFilterer.hasNext(yFilter)) {
                 // Convert the value of the event associated with the y filter
                 // to meters and add to y displacement
                 motionData[0][1] += mouseCountsToMeters(
-                    eventFilterer.getData(yFilter).getValue()
+                        eventFilterer.getData(yFilter).getValue()
                 );
-                
+
             }
-        
+
             System.out.printf(
-                "X displacement: %5.4f \t Y displacement: %5.4f\n",
-                motionData[0][0],
-                motionData[0][1]
+                    "X displacement: %5.4f \t Y displacement: %5.4f\n",
+                    motionData[0][0],
+                    motionData[0][1]
             );
 
         }
