@@ -1,14 +1,9 @@
 package org.firstinspires.ftc.teamcode;
 
-
-
-
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DcMotor;
-
-
 @Autonomous(name = "BlueAuto")
 public class BlueAuto extends CustomLinearOp {
 
