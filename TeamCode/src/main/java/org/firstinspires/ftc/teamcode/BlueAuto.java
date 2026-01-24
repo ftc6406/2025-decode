@@ -49,14 +49,14 @@ public class BlueAuto extends CustomLinearOp {
     private static final long EXTRA_FEED_SECOND_SHOT_MS = 2000; // +2 seconds on cycle 1
     private static final long STRAFE_MS             = 1725; // time to strafe to pickup zone
     private static final long EXIT_STRAFE_MS        = 2000; // tune this on-field
-    private static final long DRIVE_PICKUP_MS       = 2000; // drive forward/back to collect balls
+    private static final long DRIVE_PICKUP_MS       = 2050; // drive forward/back to collect balls
 
     // Motor powers
     private static final double LAUNCHER_POWER      = 0.70;  // full power for shooting
     private static final double INTAKE_PICK_POWER   = 1.0;  // positive to pick up balls
     private static final double INTAKE_FEED_POWER   = -1.0; // negative to feed into shooter
     private static final double STRAFE_POWER        = 0.6;  // strafe speed (0.0‑1.0)
-    private static final double DRIVE_POWER         = 0.3;  // drive speed (0.0‑1.0)
+    private static final double DRIVE_POWER         = 0.35;  // drive speed (0.0‑1.0)
 
     @Override
     public void runOpMode() {
@@ -113,7 +113,7 @@ public class BlueAuto extends CustomLinearOp {
 
             // Only reposition before the FIRST shooting cycle
             if (cycle == 0) {
-                driveForward(-0.625, 500);
+                driveForward(-0.65, 500);
                 sleep(1000);
             }
 
@@ -147,7 +147,7 @@ public class BlueAuto extends CustomLinearOp {
 //                }
 
                 // Run intake for ONLY 4 seconds total during pickup + return
-                final long INTAKE_RUN_MS = 1800;
+                final long INTAKE_RUN_MS = 1850;
 
                 // Turn intake on right before moving
                 if (intakeMotor != null) {
@@ -193,7 +193,7 @@ public class BlueAuto extends CustomLinearOp {
                 strafe(STRAFE_POWER, STRAFE_MS);
 
                 // 9. Small reposition first (no intake yet)
-                driveForward(0.5, 500);
+                driveForward(0.65, 500);
             }
         }
 
