@@ -147,7 +147,8 @@ which may be blocked by school Wi-Fi.
    Reverse any motors running in the wrong direction with `setDirection(...)`
    and do the same for corresponding drive encoders as well.
 
-   If you're using dead wheels, run `DeadWheelDirectionDebugger` and reverse those encoders accordingly.
+   If you're using dead wheels, run `DeadWheelDirectionDebugger` and reverse
+   those encoders accordingly.
 
 6. Connect to the robot Wi-Fi.
 7. Open [FTC Dashboard](http://192.168.43.1:8080/dash).
@@ -161,7 +162,7 @@ which may be blocked by school Wi-Fi.
 
 9. Use `ForwardPushTest` to determine `inPerTick`.
    The program should print the current number of ticks.
-   Push the robot forward by a certain number of inches. 
+   Push the robot forward by a certain number of inches.
    Set `inPerTick = <number of inches> / <number of ticks>`
 
 10. Use `LateralPushTest` to determine `lateralInPerTick`.
@@ -179,8 +180,8 @@ rm -rf ../road-runner-quickstart
 
 ## TeamCode
 
-Our team's code is in 
-[./TeamCode/src/main/java/org/firstinspires/ftc/teamcode/](./TeamCode/src/main/java/org/firstinspires/ftc/teamcode/).
-It contains an Autonomous, TeleOp, and various helper classes to ease the process of programming the robot.
-For more details, including how `OpMode`s work, 
+Our team's code is in
+[TeamCode/src/main/java/org/firstinspires/ftc/teamcode/](./TeamCode/src/main/java/org/firstinspires/ftc/teamcode/).
+It contains an Autonomous, TeleOp, and various helper classes to ease the process
+of programming the robot. For more details, including how `OpMode`s work,
 look at the [README](./TeamCode/src/main/java/org/firstinspires/ftc/teamcode/README.md).
