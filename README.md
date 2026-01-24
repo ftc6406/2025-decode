@@ -12,6 +12,7 @@ this template, e.g., motor names or autonomous commands.
 
 ## Table of Contents
 
+- [Table of Contents](#table-of-contents)
 - [Creating a New Repo](#creating-a-new-repo)
 - [Pulling from Template](#pulling-from-template)
 - [Updating with FTC's FtcRobotController](#updating-with-ftcs-ftcrobotcontroller)
@@ -32,7 +33,7 @@ this template, e.g., motor names or autonomous commands.
 2. Under "Repository template", select "ftc6406/TemplateRobotController".
 3. Under "Owner", select "ftc6406".
 4. Name the repository.
-   Preferably, the format for naming the repository should be "{starting year}–
+   Preferably, the format for naming the repository should be "{starting year}-
    {season name in `kebab-case`}".
 5. If you desire, add a short description, but it is probably unnecessary.
 6. Click "Public" to set the repo's visibility.
