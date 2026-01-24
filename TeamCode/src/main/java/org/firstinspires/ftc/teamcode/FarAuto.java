@@ -119,6 +119,6 @@ public class FarAuto extends CustomLinearOp {
             return;
         }
 
-        driveForward(0.5, 1000);
+        driveForward(0.6, 500);
     }
 }
