@@ -95,9 +95,9 @@ which may be blocked by school Wi-Fi.
 2. Set the logo and USB direction of your IMU
    using the instructions on [this page](https://ftc-docs.firstinspires.org/en/latest/programming_resources/imu/imu.html?highlight=imu#physical-hub-mounting).
 3. In `TuningOpModes`, set the `DRIVE_CLASS` variable to the drive class you're
-4. using.
-5. Then specify how the robot should track its position. There are a few
-6. built-in localizers:
+   using.
+4. Then specify how the robot should track its position. There are a few built-in
+   localizers:
    - Drive encoders: This is the default. The IMU will also be used on mecanum
      to get better heading.
    - Two (dead) wheel: Change the right-hand-side of `localizer =` (mecanum, tank)
@@ -108,52 +108,50 @@ which may be blocked by school Wi-Fi.
      to `new ThreeDeadWheelLocalizer(hardwareMap, PARAMS.inPerTick, pose)`.
      The code expects the two parallel encoders to be named `"par0"` and `"par1"`
      and the perpendicular one to be named `"perp"`.
-   - Pinpoint Odometry Computer: Change the right-hand-side of `localizer =`
-     (mecanum, tank) to `new PinpointLocalizer(hardwareMap, PARAMS.inPerTick, pose)`.
+   - Pinpoint Odometry Computer: Change the right-hand-side of
+     `localizer = <mecanum, tank>` to
+     `new PinpointLocalizer(hardwareMap, PARAMS.inPerTick, pose)`.
      The code expects a `Pinpoint` device to be configured with name `"pinpoint"`.
      Tuning for a `Pinpoint` device is the same as tuning for two dead wheels.
 
-7. Now check that the motors spin in the right direction. Positive power on all
+5. Now check that the motors spin in the right direction. Positive power on all
    wheels should move the robot forward. And if you're using drive encoders, the
-   ticks recorded should increase in a
-   positive direction.
+   ticks recorded should increase in a positive direction.
 
    Those with mecanum drives should use `MecanumDirectionDebugger`
    to make sure all the directions are correct.
    The `OpMode` uses the following button mappings:
 
    ```text
-      Xbox/PS4 Button - Motor
-         X / ▢ - Front Left
-         Y / Δ - Front Right
-         B / O - Rear Right
-         A / X - Rear Left
-                                 The buttons are mapped to match the wheels 
-                                 spatially if you were to rotate the gamepad 45°.
-                                 x/▢ is the front-left, and each button 
-                                 corresponds to the wheel as you go clockwise.
-                  / ______ \ 
-    ------------.-'   _   '-.+              Front of Bot
-              /   _  ( Y )  _  \                  ^
-             |  ( X )  _  ( B ) |       Front Left \     Front Right
-        ___  '.      ( A )     /|          Wheel    \       Wheel
-      .'    '.    '-._____.-'  .'          (x/▢)     \      (Y/Δ)
-     |       |                 |                      \
-      '.___.' '.               |         Rear Left     \  Rear Right
-               '.             /            Wheel        \   Wheel
-                 \          .'             (A/X)         \  (B/O)
-                  \________/
+   Xbox/PS4 Button - Motor
+      X / ▢ - Front Left
+      Y / Δ - Front Right
+      B / O - Rear Right
+      A / X - Rear Left
+                                  The buttons are mapped to match the wheels spatially if you
+                                  were to rotate the gamepad 45°. x/▢ is the front-left,
+                  ________        and each button corresponds to the wheel as you go clockwise.
+                 / ______ \
+   ------------.-'   _  '-..+              Front of Bot
+            /   _  ( Y )  _  \                  ^
+           |  ( X )  _  ( B ) |     Front Left   \    Front Right
+      ___  '.      ( A )     /|       Wheel       \      Wheel
+    .'    '.    '-._____.-'  .'       (x/▢)        \     (Y/Δ)
+   |       |                 |                      \
+    '.___.' '.               |          Rear Left    \   Rear Right
+             '.             /             Wheel       \    Wheel
+              \.          .'              (A/X)        \   (B/O)
+                \________/
    ```
 
    Reverse any motors running in the wrong direction with `setDirection(...)`
    and do the same for corresponding drive encoders as well.
 
-   If you're using dead wheels, run `DeadWheelDirectionDebugger` and reverse 
-   those encoders accordingly.
+   If you're using dead wheels, run `DeadWheelDirectionDebugger` and reverse those encoders accordingly.
 
-8. Connect to the robot Wi-Fi.
-9. Open [FTC Dashboard](http://192.168.43.1:8080/dash).
-10. Now begin the tuning process.
+6. Connect to the robot Wi-Fi.
+7. Open [FTC Dashboard](http://192.168.43.1:8080/dash).
+8. Now begin the tuning process.
 
    > [!Important]
    > The params on the Dashboard ***ARE NOT SAVED***.
@@ -161,12 +159,12 @@ which may be blocked by school Wi-Fi.
    > go to [MecanumDrive](./TeamCode/src/main/java/org/firstinspires/ftc/teamcode/MecanumDrive.java)
    > and edit the appropriate variables.
 
-11. Use `ForwardPushTest` to determine `inPerTick`.
+9. Use `ForwardPushTest` to determine `inPerTick`.
    The program should print the current number of ticks.
-   Push the robot forward by a certain number of inches.
+   Push the robot forward by a certain number of inches. 
    Set `inPerTick = <number of inches> / <number of ticks>`
 
-12. Use `LateralPushTest` to determine `lateralInPerTick`.
+10. Use `LateralPushTest` to determine `lateralInPerTick`.
 
 ### Updating RoadRunner
 
@@ -181,8 +179,8 @@ rm -rf ../road-runner-quickstart
 
 ## TeamCode
 
-Our team's code is in
+Our team's code is in 
 [./TeamCode/src/main/java/org/firstinspires/ftc/teamcode/](./TeamCode/src/main/java/org/firstinspires/ftc/teamcode/).
-It contains an Autonomous, TeleOp, and various helper classes to ease the process
-of programming the robot. For more details, including how `OpMode`s work,
+It contains an Autonomous, TeleOp, and various helper classes to ease the process of programming the robot.
+For more details, including how `OpMode`s work, 
 look at the [README](./TeamCode/src/main/java/org/firstinspires/ftc/teamcode/README.md).
