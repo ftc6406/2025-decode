@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import org.firstinspires.ftc.teamcode.hardwareSystems.LimiterServo;
+import org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels;
 
 @Autonomous(name = "FarAuto")
 public class FarAuto extends CustomLinearOp {
@@ -37,13 +38,44 @@ public class FarAuto extends CustomLinearOp {
     private DcMotorEx intakeMotor;
     private LimiterServo limiterServo;
 
+    /**
+     * Drive the robot forward or backward by setting all wheel powers to the
+     * same value.  Positive power moves the robot forward; negative power moves
+     * it backward.
+     *
+     * @param power magnitude of drive (0.0‑1.0)
+     * @param ms    duration in milliseconds
+     */
+    private void driveForward(double power, long ms) {
+        if (WHEELS == null) {
+            sleep(ms);
+            return;
+        }
+
+        try {
+            MecanumWheels mech = (MecanumWheels) WHEELS;
+            mech.getFrontLeftMotor().setPower(power);
+            mech.getFrontRightMotor().setPower(power);
+            mech.getBackLeftMotor().setPower(power);
+            mech.getBackRightMotor().setPower(power);
+            sleep(ms);
+            mech.getFrontLeftMotor().setPower(0.0);
+            mech.getFrontRightMotor().setPower(0.0);
+            mech.getBackLeftMotor().setPower(0.0);
+            mech.getBackRightMotor().setPower(0.0);
+
+        } catch (Exception e) {
+            sleep(ms);
+        }
+    }
+
     @Override
     public void runOpMode() {
         // Initialise hardware and wait for the start command. This will also
         // apply any alliance settings and configure the drive train.
         super.runOpMode();
 
-        // Map the launcher motor
+        // Map the launcher motor.
         try {
             launcherMotor = hardwareMap.get(DcMotorEx.class, "launcherMotor");
             // The launcher motor spins a flywheel.  Reverse its direction so
@@ -58,7 +90,7 @@ public class FarAuto extends CustomLinearOp {
             telemetry.addLine("WARNING: launcherMotor not found in HardAuto");
         }
 
-        // Map the intake motor
+        // Map the intake motor.
         try {
             intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
             intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
