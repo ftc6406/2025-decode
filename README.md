@@ -104,8 +104,8 @@ which may be blocked by school Wi-Fi.
      to `new TwoDeadWheelLocalizer(hardwareMap, lazyImu.get(), PARAMS.inPerTick, pose)`.
      The code expects the parallel, forward-pointing encoder to be named `"par"`
      and the perpendicular one to be named `"perp"`.
-   - Three (dead) wheel: Change the right-hand-side of `localizer =` (mecanum, tank)
-      to `new ThreeDeadWheelLocalizer(hardwareMap, PARAMS.inPerTick, pose)`.
+   - Three (dead) wheel: Change the right-hand-side of `localizer = <mecanum, tank>`
+     to `new ThreeDeadWheelLocalizer(hardwareMap, PARAMS.inPerTick, pose)`.
      The code expects the two parallel encoders to be named `"par0"` and `"par1"`
      and the perpendicular one to be named `"perp"`.
    - Pinpoint Odometry Computer: Change the right-hand-side of `localizer =`
@@ -122,25 +122,28 @@ which may be blocked by school Wi-Fi.
    to make sure all the directions are correct.
    The `OpMode` uses the following button mappings:
 
-   >     Xbox/PS4 Button - Motor                                                                   \
-   >         X / ▢ - Front Left                                                                    \
-   >         Y / Δ - Front Right                     \
-   >         B / O - Rear Right \
-   >         A / X - Rear Left \
-   >                                  The buttons are mapped to match the wheels spatially if you \
-   >                                  were to rotate the gamepad 45°. x/▢ is the front-left, \
-   >                    ________      and each button corresponds to the wheel as you go clockwise. \
-   >                   / ______ \ \
-   >     ------------.-'   _  '-..+              Front of Bot  
-   >              /   _  ( Y )  _  \                  ^  
-   >             |  ( X )  _  ( B ) |     Front Left   \    Front Right  
-   >        ___  '.      ( A )     /|       Wheel       \      Wheel  
-   >      .'    '.    '-._____.-'  .'       (x/▢)        \     (Y/Δ)  
-   >     |       |                 |                      \  
-   >      '.___.' '.               |          Rear Left    \   Rear Right  
-   >               '.             /             Wheel       \    Wheel  
-   >                \.          .'              (A/X)        \   (B/O)  
-   >                  \________/  
+   ```text
+      Xbox/PS4 Button - Motor
+         X / ▢ - Front Left
+         Y / Δ - Front Right
+         B / O - Rear Right
+         A / X - Rear Left
+                                 The buttons are mapped to match the wheels 
+                                 spatially if you were to rotate the gamepad 45°.
+                                 x/▢ is the front-left, and each button 
+                                 corresponds to the wheel as you go clockwise.
+                  / ______ \ 
+    ------------.-'   _   '-.+              Front of Bot
+              /   _  ( Y )  _  \                  ^
+             |  ( X )  _  ( B ) |       Front Left \     Front Right
+        ___  '.      ( A )     /|          Wheel    \       Wheel
+      .'    '.    '-._____.-'  .'          (x/▢)     \      (Y/Δ)
+     |       |                 |                      \
+      '.___.' '.               |         Rear Left     \  Rear Right
+               '.             /            Wheel        \   Wheel
+                 \          .'             (A/X)         \  (B/O)
+                  \________/
+   ```
 
    Reverse any motors running in the wrong direction with `setDirection(...)`
    and do the same for corresponding drive encoders as well.
@@ -158,12 +161,12 @@ which may be blocked by school Wi-Fi.
    > go to [MecanumDrive](./TeamCode/src/main/java/org/firstinspires/ftc/teamcode/MecanumDrive.java)
    > and edit the appropriate variables.
 
-1. Use `ForwardPushTest` to determine `inPerTick`.
+11. Use `ForwardPushTest` to determine `inPerTick`.
    The program should print the current number of ticks.
    Push the robot forward by a certain number of inches.
    Set `inPerTick = <number of inches> / <number of ticks>`
 
-2. Use `LateralPushTest` to determine `lateralInPerTick`.
+12. Use `LateralPushTest` to determine `lateralInPerTick`.
 
 ### Updating RoadRunner
 
