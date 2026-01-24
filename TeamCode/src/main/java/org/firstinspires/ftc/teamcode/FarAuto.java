@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import org.firstinspires.ftc.teamcode.hardwareSystems.LimiterServo;
 import org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels;
 
-@Autonomous(name = "BlueAuto")
+@Autonomous(name = "FarAuto")
 public class FarAuto extends CustomLinearOp {
 
 }
