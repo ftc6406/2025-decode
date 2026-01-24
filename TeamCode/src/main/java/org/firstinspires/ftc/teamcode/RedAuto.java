@@ -1,16 +1,16 @@
 package org.firstinspires.ftc.teamcode;
 
 
+
+
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-import org.firstinspires.ftc.teamcode.CustomLinearOp;
 
-
-@Autonomous(name = "RedAuto")
-public class Auto extends CustomLinearOp {
+@Autonomous(name = "BlueAuto")
+public class RedAuto extends CustomLinearOp {
 
 
     // Shooter / launcher motor for firing into the goal.
@@ -134,20 +134,24 @@ public class Auto extends CustomLinearOp {
             mech.getBackLeftMotor().setPower(1);
             mech.getBackRightMotor().setPower(-1);
             sleep(5000);
-//            telemetry.addData("Step", "Driving into launch zone");
-//            telemetry.addData("Forward (in)", FORWARD_TO_LAUNCH_ZONE_INCHES);
-//            telemetry.update();
+            telemetry.addData("Step", "Driving into launch zone");
+            telemetry.addData("Forward (in)", FORWARD_TO_LAUNCH_ZONE_INCHES);
+            telemetry.update();
 //
 //
-//            // No strafe, just forward/back
-//            WHEELS.driveDistance(0.0, FORWARD_TO_LAUNCH_ZONE_INCHES);
+            // No strafe, just forward/back
+            WHEELS.driveDistance(0.0, FORWARD_TO_LAUNCH_ZONE_INCHES);
 
         } else {
             telemetry.addLine("WARNING: WHEELS is null – cannot drive.");
             telemetry.update();
 
         }
-
+        if (intakeMotor != null) {
+            // If this direction pulls balls IN instead of shooting,
+            // change to intakeMotor.setPower(-1.0);
+            intakeMotor.setPower(-0.8);
+        }
         // ===========================
         // STEP 4: SHUT DOWN AND FINISH
         // ===========================
@@ -166,3 +170,4 @@ public class Auto extends CustomLinearOp {
         telemetry.update();
     }
 }
+
