@@ -113,7 +113,7 @@ public class RedAuto extends CustomLinearOp {
 
             // Only reposition before the FIRST shooting cycle
             if (cycle == 0) {
-                driveForward(-0.5, 500);
+                driveForward(-0.625, 500);
                 sleep(1000);
             }
 
@@ -177,6 +177,8 @@ public class RedAuto extends CustomLinearOp {
                     intakeMotor.setPower(0.0);
                 }
 
+                sleep(1000);
+
                 // Finish any remaining backup time with intake OFF
                 long backRemainingMs = DRIVE_PICKUP_MS - backWithIntakeMs;
                 if (backRemainingMs > 0) {
@@ -193,7 +195,7 @@ public class RedAuto extends CustomLinearOp {
                 strafe(-STRAFE_POWER, STRAFE_MS);
 
                 // 9. Small reposition first (no intake yet)
-                driveForward(0.5, 500);
+                driveForward(0.6, 500);
             }
         }
 
