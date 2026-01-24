@@ -118,5 +118,7 @@ public class FarAuto extends CustomLinearOp {
         if (isStopRequested()) {
             return;
         }
+
+        driveForward(0.5, 1000);
     }
 }
