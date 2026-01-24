@@ -31,7 +31,7 @@ import org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels;
  * intake motor runs in reverse to feed balls into the shooter and forward
  * to collect balls off the field.</p>
  */
-@Autonomous(name = "RedAuto")
+@Autonomous(name = "BlueAuto")
 public class BlueAuto extends CustomLinearOp {
 
     // Hardware references
@@ -113,7 +113,7 @@ public class BlueAuto extends CustomLinearOp {
 
             // Only reposition before the FIRST shooting cycle
             if (cycle == 0) {
-                driveForward(-0.5, 500);
+                driveForward(-0.625, 500);
                 sleep(1000);
             }
 
@@ -201,7 +201,7 @@ public class BlueAuto extends CustomLinearOp {
         if (opModeIsActive()) {
             strafe(-STRAFE_POWER, EXIT_STRAFE_MS);
 
-            sleep(2000);
+            sleep(1000);
 
             driveForward(0.6, 500);
         }
