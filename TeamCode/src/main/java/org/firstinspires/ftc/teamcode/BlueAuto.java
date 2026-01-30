@@ -1,11 +1,11 @@
 package org.firstinspires.ftc.teamcode;
 
 import org.firstinspires.ftc.teamcode.hardwareSystems.LimiterServo;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.inputanalysis.*;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.eventclassification.eventcodes.*;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.eventclassification.*;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.devicemanagement.*;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.inputanalysis.MouseMotionTracker;
+import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.inputanalysis.*;
+import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.eventclassification.eventcodes.*;
+import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.eventclassification.*;
+import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.devicemanagement.*;
+import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.inputanalysis.MouseMotionTracker;
 
 import org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
@@ -289,6 +289,16 @@ public class BlueAuto extends CustomLinearOp {
         // ===========================
         // STEP 4: SHUT DOWN AND FINISH
         // ===========================
+         // Thread termination testing
+         mouseTracker.terminate();
+
+         try {
+             // Time bound termination; can be adjusted as needed
+             mouseThread.join(500);
+
+         } catch (InterruptedException e) {
+             e.printStackTrace();
+         }
 
 
         if (intakeMotor != null) {
