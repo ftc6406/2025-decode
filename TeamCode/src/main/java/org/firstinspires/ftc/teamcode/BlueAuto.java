@@ -81,9 +81,9 @@ public class BlueAuto extends CustomLinearOp {
 
         telemetry.addLine("Filtered device list size: " + filteredDeviceList.size());
         if (!filteredDeviceList.isEmpty()) {
-//                telemetry.addLine(filteredDeviceList.get(0).getName());
-//                mouseTracker = new MouseMotionTracker(new Mouse(filteredDeviceList.get(0), 1000));
-//
+                telemetry.addLine(filteredDeviceList.get(0).getName());
+                mouseTracker = new MouseMotionTracker(new Mouse(filteredDeviceList.get(0), 1000));
+
 //                mouseThread = new Thread(mouseTracker);
 //                mouseThread.start();
 
@@ -289,7 +289,6 @@ public class BlueAuto extends CustomLinearOp {
         // ===========================
         // STEP 4: SHUT DOWN AND FINISH
         // ===========================
-         // Thread termination testing
          mouseTracker.terminate();
 
          try {
