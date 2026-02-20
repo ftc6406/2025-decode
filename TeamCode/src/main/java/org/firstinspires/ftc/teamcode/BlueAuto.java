@@ -13,6 +13,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -82,7 +83,15 @@ public class BlueAuto extends CustomLinearOp {
         telemetry.addLine("Filtered device list size: " + filteredDeviceList.size());
         if (!filteredDeviceList.isEmpty()) {
                 telemetry.addLine(filteredDeviceList.get(0).getName());
-                mouseTracker = new MouseMotionTracker(new Mouse(filteredDeviceList.get(0), 1000));
+
+                try {
+                    mouseTracker = new MouseMotionTracker(new Mouse(filteredDeviceList.get(0), 1000));
+
+                } catch (FileNotFoundException e) {
+                    telemetry.addLine("WARNING: MOUSE HANDLER CANNOT BE FOUND. CHECK READ PERMISSIONS IN /dev/input/");
+
+                }
+
 
 //                mouseThread = new Thread(mouseTracker);
 //                mouseThread.start();
