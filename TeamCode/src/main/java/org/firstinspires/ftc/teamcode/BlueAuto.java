@@ -97,7 +97,7 @@ public class BlueAuto extends CustomLinearOp {
 
         HashMap<EventTypes, EventCode[]> fullCapabilitiesFilter = new HashMap<>();
         EventCode[] filter = {Rel.REL_X, Rel.REL_Y};
-        EventCode[] eventCodeFilterMsc = null;
+        EventCode[] eventCodeFilterMsc = {null};
 
         fullCapabilitiesFilter.put(EventTypes.REL, filter);
         fullCapabilitiesFilter.put(EventTypes.MSC, eventCodeFilterMsc);
@@ -117,14 +117,21 @@ public class BlueAuto extends CustomLinearOp {
                 }
 
 
-//                mouseThread = new Thread(mouseTracker);
-//                mouseThread.start();
+                mouseThread = new Thread(mouseTracker);
+                mouseThread.start();
 
         } else {
             telemetry.addLine("WARNING: MOUSE CANNOT BE FOUND");
 
         }
 
+        if (mouseTracker == null) {
+            telemetry.addLine("Mouse tracker is null");
+
+        } else {
+            telemetry.addLine("Mouse tracker is initialized");
+
+        }
 
         try {
             // Create the limiter servo wrapper using the shared hardware class.
