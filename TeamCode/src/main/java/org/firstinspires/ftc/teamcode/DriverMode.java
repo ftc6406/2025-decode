@@ -164,7 +164,7 @@ public class DriverMode extends CustomLinearOp {
 
     // --- Pixel-based turret aiming
     // motor power at full-screen error (tune 0.4 - 1.2)
-    private static final double AIM_PIX_KP = 1.2;
+    private static final double AIM_PIX_KP = 1.40;
     // within this many pixels -> stop motor (reduces shake)
     private static final double AIM_LOCK_DEADBAND_PX = 18.0;
     // must exceed this to "start moving" again (hysteresis)
@@ -215,7 +215,7 @@ public class DriverMode extends CustomLinearOp {
 
     // When aimbot is ON but no tag is visible, we will "scan" left/right
     // with the Lazy Susan to look for the target.
-    private static final double AIM_SCAN_POWER        = 0.25; // how fast to scan
+    private static final double AIM_SCAN_POWER        = 0.35; // how fast to scan
     private static final double AIM_SEARCH_LIMIT_DEG  = 180; // max search angle left/right
 
     // Extra smoothing / hysteresis for turret control.
@@ -898,6 +898,12 @@ public class DriverMode extends CustomLinearOp {
 
         updateAimbot();
 
+        // Sync aimbot alliance flag with AutoSettings
+        allianceIsRed = (AutoSettings.getAlliance() == AllianceColor.RED);
+        telemetry.addData("Aimbot AllianceIsRed", allianceIsRed);
+        telemetry.addData("Target IDs", allianceIsRed ? "RED_TAG_IDS" : "BLUE_TAG_IDS");
+        telemetry.update();
+
         telemetry.update();
     }
 
@@ -939,9 +945,6 @@ public class DriverMode extends CustomLinearOp {
         }
         AutoSettings.writeToFile();
         applyAllianceToWebcam();
-
-        // Sync aimbot alliance flag with AutoSettings
-        allianceIsRed = (AutoSettings.getAlliance() == AllianceColor.RED);
 
         // -----------------------------------------------------------------
         // Calibrate driver control offsets.  Ask the driver to release all

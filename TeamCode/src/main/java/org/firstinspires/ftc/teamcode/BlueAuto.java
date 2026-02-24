@@ -9,14 +9,37 @@ import mousemotion.src.inputanalysis.MouseMotionTracker;
 
 import org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.DcMotor;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+/**
+ * Hard‑coded autonomous routine for FTC.
+ *
+ * <p>This OpMode performs the following sequence twice:
+ *
+ * <ol>
+ *   <li>Spin up the launcher and fire three pre‑loaded balls at full power.</li>
+ *   <li>Strafe to a pickup zone.</li>
+ *   <li>Extend the limiter to hold picked balls in place.</li>
+ *   <li>Drive forward while running the intake to collect three lined‑up balls.</li>
+ *   <li>Back up to the original distance.</li>
+ *   <li>Retract the limiter.</li>
+ *   <li>Strafe back to the starting position.</li>
+ *   <li>Repeat from step&nbsp;1 to shoot the newly collected balls.</li>
+ * </ol>
+ *
+ * <p>Distances and durations in this routine are approximate and should be
+ * tuned on the real robot.  Positive drive power moves the robot forward;
+ * negative drive power moves it backward.  Positive strafe power moves the
+ * robot to the right; negative strafe power moves it to the left.  The
+ * intake motor runs in reverse to feed balls into the shooter and forward
+ * to collect balls off the field.</p>
+ */
 @Autonomous(name = "BlueAuto")
 public class BlueAuto extends CustomLinearOp {
 
@@ -54,6 +77,7 @@ public class BlueAuto extends CustomLinearOp {
 
     // How long to run intake for each shot (ms)
     private static final long INTAKE_FEED_TIME_MS  = 2500; // 5 seconds
+    // Limiter servo positions (tuned on the real robot)
 
 
     // How long to pause between shots (ms)
@@ -121,6 +145,9 @@ public class BlueAuto extends CustomLinearOp {
         // === Map shooter and intake motors (same as TeleOp) ===
         try {
             launcherMotor = hardwareMap.get(DcMotorEx.class, "launcherMotor");
+            // The launcher motor spins a flywheel.  Reverse its direction so
+            // positive power shoots balls out.  The motor is run without an
+            // encoder because precise speed control is not required here.
             launcherMotor.setDirection(DcMotorSimple.Direction.REVERSE);
             launcherMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             launcherMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
@@ -130,6 +157,7 @@ public class BlueAuto extends CustomLinearOp {
             telemetry.addLine("WARNING: launcherMotor not found in Auto");
         }
 
+        // Map the intake motor
         try {
             intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
             intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -141,6 +169,9 @@ public class BlueAuto extends CustomLinearOp {
             telemetry.addLine("WARNING: intakeMotor not found in Auto");
         }
 
+        telemetry.update();
+
+        // Abort if stop is requested before the match begins
         if (isStopRequested()) return;
 
         // =========================================
