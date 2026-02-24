@@ -1,11 +1,11 @@
 package org.firstinspires.ftc.teamcode;
 
 import org.firstinspires.ftc.teamcode.hardwareSystems.LimiterServo;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.inputanalysis.*;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.eventclassification.eventcodes.*;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.eventclassification.*;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.devicemanagement.*;
-import org.firstinspires.ftc.teamcode.hardwareSystems.mousemotion.src.inputanalysis.MouseMotionTracker;
+import mousemotion.src.inputanalysis.*;
+import mousemotion.src.eventclassification.eventcodes.*;
+import mousemotion.src.eventclassification.*;
+import mousemotion.src.devicemanagement.*;
+import mousemotion.src.inputanalysis.MouseMotionTracker;
 
 import org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
