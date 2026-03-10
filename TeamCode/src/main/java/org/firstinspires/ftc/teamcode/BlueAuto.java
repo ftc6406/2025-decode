@@ -91,6 +91,7 @@ public class BlueAuto extends CustomLinearOp {
     @Override
     public void runOpMode() {
         // This sets up WHEELS and waits for START.
+        telemetry.setAutoClear(false);
         super.runOpMode();
 
         ArrayList<InputDevice> devices = KernalInputDevices.getDevices();
