@@ -202,37 +202,37 @@ public class BlueAuto extends CustomLinearOp {
         // STEP 3: FIRE THREE BALLS USING INTAKE
         // =========================================
 
-
-        for (int shot = 1; shot <= 3 && opModeIsActive(); shot++) {
-
-
-            telemetry.addData("Shot", shot);
-            telemetry.addLine("Running intake to feed ball");
-            telemetry.update();
-
-
-            if (intakeMotor != null) {
-                // If this direction pulls balls IN instead of shooting,
-                // change to intakeMotor.setPower(-1.0);
-                intakeMotor.setPower(-0.8);
-            }
-
-
-            sleep(INTAKE_FEED_TIME_MS);  // 5 seconds feed
-
-
-            if (intakeMotor != null) {
-                intakeMotor.setPower(0.0);
-            }
-
-
-            if (shot < 3) {
-                telemetry.addLine("Pause between shots");
-                telemetry.update();
-                sleep(INTAKE_PAUSE_TIME_MS);  // 5 seconds pause
-            }
-        }
-
+//        TEMPORARILY COMMENTED CODE
+//        for (int shot = 1; shot <= 3 && opModeIsActive(); shot++) {
+//
+//
+//            telemetry.addData("Shot", shot);
+//            telemetry.addLine("Running intake to feed ball");
+//            telemetry.update();
+//
+//
+//            if (intakeMotor != null) {
+//                // If this direction pulls balls IN instead of shooting,
+//                // change to intakeMotor.setPower(-1.0);
+//                intakeMotor.setPower(-0.8);
+//            }
+//
+//
+//            sleep(INTAKE_FEED_TIME_MS);  // 5 seconds feed
+//
+//
+//            if (intakeMotor != null) {
+//                intakeMotor.setPower(0.0);
+//            }
+//
+//
+//            if (shot < 3) {
+//                telemetry.addLine("Pause between shots");
+//                telemetry.update();
+//                sleep(INTAKE_PAUSE_TIME_MS);  // 5 seconds pause
+//            }
+//        }
+//
         // ================
         // STEP 1: DRIVE IN
         // ================
@@ -259,6 +259,24 @@ public class BlueAuto extends CustomLinearOp {
             // Access the individual motors and set their powers to zero.
             org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels mech =
                     (org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels) WHEELS;
+
+            if (mouseTracker != null) {
+                for (int i = 0; i < 100; i++) {
+                    while (mouseTracker.getDisplacement()[1] < 1) {
+                        mech.getFrontLeftMotor().setPower(1);
+                        mech.getFrontRightMotor().setPower(1);
+                        mech.getBackLeftMotor().setPower(1);
+                        mech.getBackRightMotor().setPower(1);
+                    }
+
+                    while (mouseTracker.getDisplacement()[1] > 0) {
+                        mech.getFrontLeftMotor().setPower(1);
+                        mech.getFrontRightMotor().setPower(1);
+                        mech.getBackLeftMotor().setPower(1);
+                        mech.getBackRightMotor().setPower(1);
+                    }
+                }
+            }
 
 //            if (mouseTracker != null) {
 //                // Strafe leftwards to the first ball row
