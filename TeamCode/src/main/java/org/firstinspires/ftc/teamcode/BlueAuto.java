@@ -91,8 +91,9 @@ public class BlueAuto extends CustomLinearOp {
     @Override
     public void runOpMode() {
         // This sets up WHEELS and waits for START.
-        telemetry.setAutoClear(false);
         super.runOpMode();
+        telemetry.setAutoClear(false);
+        telemetry.log().add("BlueAuto Started");
 
         ArrayList<InputDevice> devices = KernalInputDevices.getDevices();
 
@@ -105,15 +106,15 @@ public class BlueAuto extends CustomLinearOp {
 
         ArrayList<InputDevice> filteredDeviceList = KernalInputDevices.getDevices(fullCapabilitiesFilter);
 
-        telemetry.addLine("Filtered device list size: " + filteredDeviceList.size());
+        telemetry.log().add("Filtered device list size: " + filteredDeviceList.size());
         if (!filteredDeviceList.isEmpty()) {
-                telemetry.addLine(filteredDeviceList.get(0).getName());
+                telemetry.log().add("Mouse Device: " + filteredDeviceList.get(0).getName());
 
                 try {
                     mouseTracker = new MouseMotionTracker(new Mouse(filteredDeviceList.get(0), 1000));
 
                 } catch (FileNotFoundException e) {
-                    telemetry.addLine("WARNING: MOUSE HANDLER CANNOT BE FOUND. CHECK READ PERMISSIONS IN /dev/input/");
+                    telemetry.log().add("WARNING: MOUSE HANDLER CANNOT BE FOUND. CHECK READ PERMISSIONS IN /dev/input/");
 
                 }
 
@@ -122,15 +123,15 @@ public class BlueAuto extends CustomLinearOp {
                 mouseThread.start();
 
         } else {
-            telemetry.addLine("WARNING: MOUSE CANNOT BE FOUND");
+            telemetry.log().add("WARNING: MOUSE CANNOT BE FOUND");
 
         }
 
         if (mouseTracker == null) {
-            telemetry.addLine("Mouse tracker is null");
+            telemetry.log().add("Mouse tracker is null");
 
         } else {
-            telemetry.addLine("Mouse tracker is initialized");
+            telemetry.log().add("Mouse tracker is initialized");
 
         }
 
@@ -143,10 +144,10 @@ public class BlueAuto extends CustomLinearOp {
                     LIMITER_OUT_POS);
 
 
-            telemetry.addLine("Limiter servo initialised");
+            telemetry.log().add("Limiter servo initialised");
 
         } catch (Exception e) {
-            telemetry.addLine("WARNING: Limiter servo not found.\n" + e.getMessage());
+            telemetry.log().add("WARNING: Limiter servo not found.\n" + e.getMessage());
 
         }
 
@@ -160,9 +161,9 @@ public class BlueAuto extends CustomLinearOp {
             launcherMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             launcherMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
             launcherMotor.setPower(0.0);
-            telemetry.addLine("Launcher motor initialised (auto)");
+            telemetry.log().add("Launcher motor initialised (auto)");
         } catch (Exception e) {
-            telemetry.addLine("WARNING: launcherMotor not found in Auto");
+            telemetry.log().add("WARNING: launcherMotor not found in Auto");
         }
 
         // Map the intake motor
@@ -172,9 +173,9 @@ public class BlueAuto extends CustomLinearOp {
             intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             intakeMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
             intakeMotor.setPower(0.0);
-            telemetry.addLine("Intake motor initialised (auto)");
+            telemetry.log().add("Intake motor initialised (auto)");
         } catch (Exception e) {
-            telemetry.addLine("WARNING: intakeMotor not found in Auto");
+            telemetry.log().add("WARNING: intakeMotor not found in Auto");
         }
 
         telemetry.update();
@@ -185,15 +186,14 @@ public class BlueAuto extends CustomLinearOp {
         // =========================================
         // STEP 2: SPIN UP LAUNCHER (FULL POWER)
         // =========================================
-        telemetry.addLine("Test line 1");
 
         if (launcherMotor != null) {
 //            telemetry.addLine("Spinning launcher at full power");
-            telemetry.addLine("Spinning launcher at 0.65 power");
+            telemetry.log().add("Spinning launcher at 0.65 power");
             telemetry.update();
             launcherMotor.setPower(0.65);
         } else {
-            telemetry.addLine("No launcherMotor – skipping shooting");
+            telemetry.log().add("No launcherMotor – skipping shooting");
             telemetry.update();
         }
 
