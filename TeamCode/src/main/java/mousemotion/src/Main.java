@@ -1,19 +1,20 @@
-package mousemotion.src;
-
-import mousemotion.src.devicemanagement.*;
-import mousemotion.src.eventclassification.*;
-import mousemotion.src.eventclassification.eventcodes.*;
-import mousemotion.src.inputanalysis.MouseMotionTracker;
+import devicemanagement.*;
+import eventclassification.*;
+import eventclassification.eventcodes.*;
+import inputanalysis.MouseMotionTracker;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Set;
 
 public class Main {
     public static int DPI = 1000;
     public static void main(String[] args) {
         System.out.println("Program running");
+        System.out.println();
 
+        // Get mouse using filter
         HashMap<EventTypes, EventCode[]> fullCapabilitiesFilter = (
             new HashMap<>()
         );
@@ -40,18 +41,9 @@ public class Main {
             
         }
 
-        Thread mouseThread = null;
-
-        if (mouseTracker != null) {
-            mouseThread = new Thread(mouseTracker, "Mouse Data Processor");
-            mouseThread.start();
-
-        }
-
-        
+        // Output mouse data
         while (mouseTracker != null) {
             double[] motionData = mouseTracker.getDisplacement();
-
 
             System.out.printf(
                 "X displacement: %5.4f \t Y displacement: %5.4f\n",
@@ -62,21 +54,22 @@ public class Main {
 
         }
 
+    
+        // Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+
+        // System.out.println("Original Threads:");
+        // for (Thread thread : threadSet) {
+        //     System.out.println(thread.getName());
+        // }
+
+        // System.out.println();
         // // Thread termination testing
         // mouseTracker.terminate();
 
-        // try {
-        //     // Time bound termination; can be adjusted as needed
-        //     mouseThread.join(500);
-
-        // } catch (InterruptedException e) {
-        //     e.printStackTrace();
-        // }
-
-        // Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+        // threadSet = Thread.getAllStackTraces().keySet();
 
         // System.out.println();
-        // System.out.println("Threads");
+        // System.out.println("Threads After Termination:");
         // for (Thread thread : threadSet) {
         //     System.out.println(thread.getName());
         // }

@@ -1,4 +1,4 @@
-package mousemotion.src.eventclassification;
+package eventclassification;
 
 import java.util.HashMap;
 

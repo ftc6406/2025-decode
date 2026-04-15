@@ -1,9 +1,4 @@
-package mousemotion.src.devicemanagement;
-
-import mousemotion.src.eventclassification.EventTypes;
-import mousemotion.src.eventclassification.eventcodes.EventCode;
-import mousemotion.src.eventclassification.eventcodes.Rep;
-import mousemotion.src.eventclassification.eventcodes.Syn;
+package devicemanagement;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,7 +12,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-
+import eventclassification.EventTypes;
+import eventclassification.eventcodes.EventCode;
+import eventclassification.eventcodes.Rep;
+import eventclassification.eventcodes.Syn;
 
 public class KernalInputDevices { 
     // This file lists all devices and their details
@@ -60,9 +58,9 @@ public class KernalInputDevices {
                 // If the event code array is null or of length 0, interpret as wild card
                 // Essentially filter by only event type if event code is null
                 if (
-                    eventCodeFilter == null ||
-                    eventCodeFilter.size() == 0 ||
-                    eventCodeFilter.get(0) == null
+                    eventCodeFilter == null 
+                    || eventCodeFilter.size() == 0 
+                    || eventCodeFilter.get(0) == null
                 ) {
                     continue;
                 }
@@ -81,6 +79,8 @@ public class KernalInputDevices {
 
             }
 
+            // if the device has met all filters, add the input device to the
+            /// list of devices
             if (matches) {
                 filtered.add(inputDevice);
 
@@ -154,13 +154,21 @@ public class KernalInputDevices {
         // Clear arraylist to remove duplicate items being added
         devices.clear();
 
+        // device id
         int[] id;
+
+        // device name
         String name;
+
+        // data stream located at /dev/input/eventX where x is a number
         File eventFile;
+
+        // maps the event type to array of event codes possiable
         HashMap<EventTypes, EventCode[]> capabilities;
     
         String[] eventDirs = getEventDirectories(INPUT_DEVICE_DIR);
 
+        // For every directory named event[0-9]+
         for (String eventDir : eventDirs) {
             id = getDeviceId(eventDir);
             eventFile = getHanderFile(eventDir);
@@ -181,7 +189,9 @@ public class KernalInputDevices {
     private static String[] getEventDirectories(File dirToFilter) {
         // Get the files within the directory and only get subdirectoreis
         // of /sys/class/input that start with event followed by a number
-        String[] files = dirToFilter.list((File dir, String name) -> name.toLowerCase().matches("event[0-9]+"));
+        String[] files = dirToFilter.list(
+            (File dir, String name) -> name.toLowerCase().matches("event[0-9]+")
+        );
 
         return files;
     }
@@ -214,6 +224,7 @@ public class KernalInputDevices {
 
         int[] id = new int[4];
 
+        // Construct the id array
         id[0] = getBus(idDir);
         id[1] = getVendor(idDir);
         id[2] = getProduct(idDir);

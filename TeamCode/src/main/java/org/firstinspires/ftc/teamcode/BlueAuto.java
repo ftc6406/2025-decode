@@ -5,7 +5,6 @@ import mousemotion.src.inputanalysis.*;
 import mousemotion.src.eventclassification.eventcodes.*;
 import mousemotion.src.eventclassification.*;
 import mousemotion.src.devicemanagement.*;
-import mousemotion.src.inputanalysis.MouseMotionTracker;
 
 import org.firstinspires.ftc.teamcode.hardwareSystems.MecanumWheels;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
@@ -95,16 +94,19 @@ public class BlueAuto extends CustomLinearOp {
         telemetry.setAutoClear(false);
         telemetry.log().add("BlueAuto Started");
 
-        ArrayList<InputDevice> devices = KernalInputDevices.getDevices();
+        HashMap<EventTypes, EventCode[]> fullCapabilitiesFilter = (
+                new HashMap<>()
+        );
 
-        HashMap<EventTypes, EventCode[]> fullCapabilitiesFilter = new HashMap<>();
         EventCode[] filter = {Rel.REL_X, Rel.REL_Y};
-        EventCode[] eventCodeFilterMsc = {null};
+        EventCode[] eventCodeFilterMsc = {};
 
         fullCapabilitiesFilter.put(EventTypes.REL, filter);
         fullCapabilitiesFilter.put(EventTypes.MSC, eventCodeFilterMsc);
 
-        ArrayList<InputDevice> filteredDeviceList = KernalInputDevices.getDevices(fullCapabilitiesFilter);
+        ArrayList<InputDevice> filteredDeviceList = (
+                KernalInputDevices.getDevices(fullCapabilitiesFilter)
+        );
 
         telemetry.log().add("Filtered device list size: " + filteredDeviceList.size());
         if (!filteredDeviceList.isEmpty()) {
@@ -117,10 +119,6 @@ public class BlueAuto extends CustomLinearOp {
                     telemetry.log().add("WARNING: MOUSE HANDLER CANNOT BE FOUND. CHECK READ PERMISSIONS IN /dev/input/");
 
                 }
-
-
-                mouseThread = new Thread(mouseTracker);
-                mouseThread.start();
 
         } else {
             telemetry.log().add("WARNING: MOUSE CANNOT BE FOUND");
@@ -263,7 +261,7 @@ public class BlueAuto extends CustomLinearOp {
 
             if (mouseTracker != null) {
                 for (int i = 0; i < 100; i++) {
-                    while (mouseTracker.getDisplacement()[1] < 1) {
+                    while (mouseTracker.getDisplacement()[1] > -1) {
                         telemetry.addLine("Displacement: " + mouseTracker.getDisplacement()[1]);
                         mech.getFrontLeftMotor().setPower(1);
                         mech.getFrontRightMotor().setPower(1);
@@ -271,7 +269,7 @@ public class BlueAuto extends CustomLinearOp {
                         mech.getBackRightMotor().setPower(1);
                     }
 
-                    while (mouseTracker.getDisplacement()[1] > 0) {
+                    while (mouseTracker.getDisplacement()[1] < 0) {
                         telemetry.addLine("Displacement: " + mouseTracker.getDisplacement()[1]);
                         mech.getFrontLeftMotor().setPower(1);
                         mech.getFrontRightMotor().setPower(1);

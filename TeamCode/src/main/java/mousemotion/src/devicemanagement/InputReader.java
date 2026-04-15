@@ -1,7 +1,4 @@
-package mousemotion.src.devicemanagement;
-
-import mousemotion.src.eventclassification.EventTypes;
-import mousemotion.src.eventclassification.eventcodes.EventCode;
+package devicemanagement;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -10,7 +7,16 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import eventclassification.EventTypes;
+import eventclassification.eventcodes.EventCode;
+
+
 public class InputReader {
+    /**
+     * Represents the availablity state of the reader
+     */
+    private volatile boolean closed = false;
+
     /**
      * Represents the path of the event file to read
      */
@@ -38,6 +44,11 @@ public class InputReader {
 
     }
 
+    public boolean isClosed() {
+        return closed;
+
+    }
+
     public EventData[] getSynReport() {
         // Create array list to store all non-syn events
         ArrayList<EventData> events = new ArrayList<>();
@@ -56,12 +67,17 @@ public class InputReader {
 
     }
 
+    /**
+     * Reads a single event reported by the /dev/inputx file
+     * 
+     * @return Single event
+     */
     public EventData getEventData() {
         byte[] buffer = eventFileReader();
 
         // Buffer will be null if file stream has ended. If file stream
         // ended, return null
-        if (buffer == null) {
+        if (buffer == null || buffer.length == 0) {
             return null;
 
         }
@@ -94,6 +110,12 @@ public class InputReader {
 
     }
 
+    /**
+     * Get the time of a given event report
+     * 
+     * @param buffer
+     * @return
+     */
     private long[] getEventTime(byte[] buffer) {
         // bytes 8-15 represent fractions of a second in microseconds
         // assumed to be little endian (least significant byte on the left)
@@ -118,7 +140,17 @@ public class InputReader {
         return new long[]{seconds, microSeconds};
     }
     
+    /**
+     * Reads a single event report from the event file
+     * 
+     * @return Event report represented as a byte array
+     */
     public byte[] eventFileReader() {
+        if (closed) {
+            return null;
+        }
+
+
         // Each event is composed of 24 bytes and writes bytes to buffer
         // If buffer is smaller than 24 on 64 bit system, an error will happen
         // Buffer should be 16 bytes if on 32 architecture 
@@ -136,6 +168,11 @@ public class InputReader {
             // Ensure a single entire event is read
             // Prevent events being sheered and cut in half
             while (bufferIndexOffset < buffer.length) {
+                if (closed) {
+                    reader.close();
+                    return null;
+                }
+
                 bytesRead = reader.read(buffer, bufferIndexOffset, maxBytesRead);
 
                 // The read method returns -1 if the stream has ended
@@ -147,11 +184,9 @@ public class InputReader {
                 maxBytesRead -= bytesRead;
 
             }
-
-            
-        
+                   
         } catch(IOException e) {
-            System.out.println(e);
+            e.printStackTrace();
             return null;
 
         }
@@ -162,12 +197,12 @@ public class InputReader {
     }
 
     /**
-     * Closes the BufferedInputStream to prevent resource leak
+     * Closes the BufferedInputStream to prevent resource leak.
      * 
      * @throws IOException Throws IOException if IO error occurs
      */
     public void close() throws IOException {
-        reader.close();
+        closed = true;
 
     }
 

@@ -1,6 +1,4 @@
-package mousemotion.src.devicemanagement;
-
-// public record Mouse(InputDevice device, int dpi) {}
+package devicemanagement;
 
 public class Mouse {
     private final InputDevice device;
@@ -21,23 +19,23 @@ public class Mouse {
     
     }
 
-    @Deprecated
-    public InputDevice device() {
-        return getDevice();
-    
-    }
-
+    /**
+     * Gets the DPI of the mosue
+     * 
+     * @return Mouse DPI
+     */
     public int getDpi() {
         return dpi;
     
     }
 
-    @Deprecated
-    public int dpi() {
-        return getDpi();
-    
-    }
-
+    /**
+     * Compares if two mouse objects have the same DPI and are represented
+     * by the same devices.
+     * 
+     * @param other The other mouse to compare to
+     * @return The equality between the two mouse objects
+     */
     public boolean equals(Mouse other) {
         if (other == null) {
             return false;
@@ -48,8 +46,5 @@ public class Mouse {
             dpi == other.dpi
         );
     }
-
-
-
 
 }

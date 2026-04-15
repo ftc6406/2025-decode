@@ -1,8 +1,8 @@
-package mousemotion.src.eventclassification.eventcodes;
+package eventclassification.eventcodes;
 
 import java.util.HashMap;
 
-import mousemotion.src.eventclassification.EventTypes;
+import eventclassification.EventTypes;
 
 public enum Snd implements EventCode {
     SND_CLICK(0x00),

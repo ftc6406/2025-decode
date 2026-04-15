@@ -1,8 +1,8 @@
-package mousemotion.src.eventclassification.eventcodes;
+package eventclassification.eventcodes;
 
 import java.util.HashMap;
 
-import mousemotion.src.eventclassification.EventTypes;
+import eventclassification.EventTypes;
 
 public enum Msc implements EventCode {
     MSC_SERIAL(0x00),

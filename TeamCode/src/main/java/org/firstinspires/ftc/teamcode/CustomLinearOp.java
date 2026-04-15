@@ -68,17 +68,6 @@ public class CustomLinearOp extends LinearOpMode {
      */
     protected TeamSide TEAM_SIDE;
 
-    static {
-        ProcessBuilder changeDevPermission = new ProcessBuilder(
-            "bash",
-            "su",
-            "chmod",
-            "chmod",
-            "+r",
-            "/dev/input/*"
-        );
-    }
-
     /**
      * Apply the currently selected alliance to the webcam’s color target.
      * Called in both DriverMode and Auto after AutoSettings.readFromFile().

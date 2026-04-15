@@ -1,9 +1,9 @@
-package mousemotion.src.eventclassification.eventcodes;
+package eventclassification.eventcodes;
 
 import java.util.HashMap;
 
-import mousemotion.src.eventclassification.EventCategory;
-import mousemotion.src.eventclassification.EventTypes;
+import eventclassification.EventCategory;
+import eventclassification.EventTypes;
 
 public interface EventCode extends EventCategory{
     public HashMap<Integer, EventCode> VALUE_MAP = new HashMap<>();

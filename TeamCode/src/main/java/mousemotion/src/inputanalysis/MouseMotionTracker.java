@@ -1,217 +1,153 @@
-package mousemotion.src.inputanalysis;
+package inputanalysis;
 
 import java.io.FileNotFoundException;
-import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.HashMap;
 
-import mousemotion.src.devicemanagement.InputReader;
-import mousemotion.src.devicemanagement.Mouse;
-import mousemotion.src.eventclassification.EventTypes;
-import mousemotion.src.eventclassification.eventcodes.Rel;
+import devicemanagement.*;
+import eventclassification.eventcodes.EventCode;
+import eventclassification.eventcodes.Rel;
 
-public class MouseMotionTracker implements Runnable {
+public class MouseMotionTracker {
     /**
-     * Use this variable to control the termination of thread. Set to true
-     * to stop thread.
+     * The mouse being tracked
      */
-    private volatile boolean stop = false;
-    
-    /**
-     * Represents a mouse object that wraps a InputDevice object and has a 
-     * DPI field.
-     */
-    private final Mouse mouse;
+    private Mouse mouse;
 
     /**
-     * Reads input and creates a hashmap of filters to map to a concurrent queue
-     * that holds events that match the filter
+     * Tracker for x mouse counts.
      */
-    private final InputEventFilterer eventFilterer;
+    private MouseCountsTracker xTracker;
 
     /**
-     * Filter that filters for relative x values of the mouse
+     * Tracker for y mouse counts
      */
-    private final EventFilter xFilter;
+    private MouseCountsTracker yTracker;
 
     /**
-     * Filter that filters for relative y values of the mouse
+     * System to read mouse events and distribute events that correspond to
+     * the mouse trackers to handle
      */
-    private final EventFilter yFilter;
-    
-    /**
-     * Thread the runs the input reader and gathers data. Does not process 
-     * events beyond converting it into a more manageable representation
-     */
-    private final Thread readerRunner;
+    private EventBroker eventBroker;
 
     /**
-     * First element represents mouse counts in the x direction. Second element
-     * represents mouse counts in the y direction. These numbers do not directly
-     * represent physical measurements.
+     * The thread that runs the event broker
      */
-    private final AtomicIntegerArray mouseCounts = new AtomicIntegerArray(
-        new int[]{0, 0}
-    );
+    private Thread eventBrokerThread;
 
     /**
-     * Fisrt element holds the position offset in the x direction. The second
-     * element represents the offset in the y direction.
+     * Creates a tracker for a mouse that tracks x and y movement and converts
+     * the mouse counts into physical measurements for displacement in meters
+     * and velocity in meters per second. Begins reading mouse data immediately.
+     * 
+     * @param mouse
+     * @throws FileNotFoundException
      */
-    private final double[] positionOffset = new double[2];
-
-    public MouseMotionTracker(Mouse mouse, double[] positionOffset) throws FileNotFoundException {
+    public MouseMotionTracker(Mouse mouse) throws FileNotFoundException {
         this.mouse = mouse;
-        
-        eventFilterer = new InputEventFilterer(
-            new InputReader(this.mouse.getDevice().getHandlerFile())
+
+        // Create the trackers
+        xTracker = new MouseCountsTracker(mouse, Rel.REL_X);
+        yTracker = new MouseCountsTracker(mouse, Rel.REL_Y);
+
+        // Map an event code to a tracker that tracks the event code for a 
+        // device
+        HashMap<EventCode, InputEventConsumer> eventConsumers = new HashMap<>();
+
+        eventConsumers.put(Rel.REL_X, xTracker);
+        eventConsumers.put(Rel.REL_Y, yTracker);
+
+        // Read from a device and map its input to a event consumer to handle
+        eventBroker = new EventBroker(
+            new InputReader(mouse.getDevice().getHandlerFile()),
+            eventConsumers
         );
 
-        // Create data filters for x and y
-        xFilter = new EventFilter(EventTypes.REL, Rel.REL_X);
-        yFilter = new EventFilter(EventTypes.REL, Rel.REL_Y);
+        // Run the EventBroker in a seperate thread
+        eventBrokerThread = new Thread(
+            eventBroker,
+            mouse.getDevice().getName() + " Event Broker"
+        );
 
-        // Add and register filters to event reader
-        eventFilterer.addFilter(xFilter);
-        eventFilterer.addFilter(yFilter);
+        eventBrokerThread.start();
+
+    }
+
+    /**
+     * Gets the mouse that is being tracked
+     * 
+     * @return A mouse object representing the mouse being tracked
+     */
+    public Mouse getMouse() {
+        return mouse;
+    
+    }
+
+    /**
+     * Gets the event broker of the mouse tracker that governs the distribution
+     * of events to handlers
+     * 
+     * @return Event broker handling mouse data
+     */
+    public EventBroker getEventBroker() {
+        return eventBroker;
         
-        // If start is null, set initial displacement to 0
-        // Otherwise, set it to the values of the array
-        if (positionOffset == null) {
-            this.positionOffset[0] = 0;
-            this.positionOffset[1] = 0;
-
-        } else {
-            this.positionOffset[0] = positionOffset[0];
-            this.positionOffset[1] = positionOffset[1];
-
-        }
-
-        readerRunner = new Thread(eventFilterer, "Mouse Data Getter");
-        readerRunner.start();
-
-    }
-
-    public MouseMotionTracker(Mouse mouse) throws FileNotFoundException {
-        this(mouse, null);
     }
 
     /**
-     * Flag the mouse data processor to stop and clean up the data getter
-     * thread.
-     */
-    public void terminate() {
-        // Set this data processor thread to stop
-        stop = true;
-
-        // Stop data getter thread
-        eventFilterer.terminate();
-
-        try {
-            // Time bound termination; can be adjusted as needed
-            readerRunner.join(500);
-
-        } catch (InterruptedException e) {
-            System.out.print("Event file reader terminated");
-            System.out.print(e);
-            
-
-        }
-
-    }
-
-    /**
-     * Get the state of the flag marking thread to end
+     * Gets the displacement of the mouse in meters
      * 
-     * @return termination flag
-     */
-    public boolean isTerminated() {
-        return stop;
-    }
-
-    /**
-     * Gets the displacement of the mosue in meters.
-     * 
-     * @return displacement of mouse in meters
+     * @return An array with index 0 representing x component and 1 the y
      */
     public double[] getDisplacement() {
-        // Convert mouse counts to meters and add the original offsets to 
-        // position
         return new double[]{
-            mouseCountsToMeters(mouseCounts.get(0)) + positionOffset[0],
-            mouseCountsToMeters(mouseCounts.get(1)) + positionOffset[1]
+            xTracker.getDisplacement(),
+            yTracker.getDisplacement()
+        };
+    
+    }
+
+    /**
+     * Gets the total mouse counts as componenets of a vector with x being
+     * index 0 and y being index 1.
+     * 
+     * @return Array of {x mouse counts, y mouse counts}
+     */
+    public int[] getLifetimeCounts() {
+        return new int[]{
+            xTracker.getLifetimeCounts(),
+            yTracker.getLifetimeCounts()
         };
 
     }
 
     /**
-     * This method defines the runtime behavior of the thread. This will only
-     * run properly as a thread when an objects of this class is passed into
-     * a thread constructor and start() is called on the thread object
+     * Gets the velocity vector of the mouse in x and y direction. The magnitude
+     * of the vectors will never be 0.
+     * 
+     * @return Array representing components of the vector
      */
-    @Override
-    public void run() {
-        // Loop if the method has not been marked to stop
-        while (!stop) {
-            // If there is any data associated with the x filter
-            if (eventFilterer.hasNext(xFilter)) {
-                // Add mouse counts to the x value of the atomic integer array
-                mouseCounts.getAndAdd(
-                    0,
-                    eventFilterer.getData(xFilter).getValue()
-                );
+    public double[] getVelocity() {
+        return new double[]{
+            xTracker.getVelocity(),
+            yTracker.getVelocity()
+        };
 
-            }
-            
-            // If there is any data associated with the y filter
-            if (eventFilterer.hasNext(yFilter)) {
-                // Add mouse counts to the y value of the atomic integer array
-                mouseCounts.getAndAdd(
-                    1,
-                    eventFilterer.getData(yFilter).getValue()
-                );
-                
-            }
+    }
+
+    /**
+     * Stops mouse reader thread. To stop, at least one byte of data must be 
+     * read after the signal or in otherwords, the mouse must move.
+     */
+    public void terminate() {
+        eventBroker.terminate();
+        
+        try {
+            eventBrokerThread.join(10);
+        
+        } catch (InterruptedException e) {
+            e.printStackTrace();    
             
         }
-
-
-
-        System.out.print("Thread ended");
-
-            // Output to console the displacement in terms of meters
-            // System.out.printf(
-            //     "X displacement: %5.4f \t Y displacement: %5.4f\n",
-            //     motionData[0][0],
-            //     motionData[0][1]
-            // );
-
+        
     }
-
-    /**
-     * Given a DPI and mouse counts or dots, convert the number of counts to
-     * meters using the given DPI.
-     * 
-     * @param counts Number of counts recorded by the mouse
-     * @param dpi The DPI of the mouse
-     * @return The number of meters the counts is equivalent to given the dpi
-     */
-    private double mouseCountsToMeters(int counts, int dpi) {
-        // return (double) counts / 1000.0;
-        // return (double) counts / dpi;
-        return (double) counts / dpi * 0.0254;
-
-        // counts inch meters
-        // counts inch
-    }
-
-    /**
-     * Returns the results of converting counts to meters
-     * 
-     * @param counts The number of dots or counts the mouse has detected
-     * @return Displacement in meters based on mouse counts
-     */
-    private double mouseCountsToMeters(int counts) {
-        return mouseCountsToMeters(counts, mouse.getDpi());
-        // return (1.0 * counts / mouse.dpi()) * 0.0254;
-    }
-
 }
