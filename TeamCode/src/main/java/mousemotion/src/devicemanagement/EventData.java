@@ -1,9 +1,9 @@
-package devicemanagement;
+package mousemotion.src.devicemanagement;
 
 import java.util.Arrays;
 
-import eventclassification.EventTypes;
-import eventclassification.eventcodes.EventCode;
+import mousemotion.src.eventclassification.EventTypes;
+import mousemotion.src.eventclassification.eventcodes.EventCode;
 
 /**
  * This class holds data of each event created by the device. The structure of 

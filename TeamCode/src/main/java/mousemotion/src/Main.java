@@ -1,7 +1,9 @@
-import devicemanagement.*;
-import eventclassification.*;
-import eventclassification.eventcodes.*;
-import inputanalysis.MouseMotionTracker;
+package mousemotion.src;
+
+import mousemotion.src.devicemanagement.*;
+import mousemotion.src.eventclassification.*;
+import mousemotion.src.eventclassification.eventcodes.*;
+import mousemotion.src.inputanalysis.MouseMotionTracker;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -14,6 +16,9 @@ public class Main {
         System.out.println("Program running");
         System.out.println();
 
+        SystemInfo.setArchitecture(SystemInfo.BitArchitecture.ARCH_64_BIT);
+        SystemInfo.setEndianness(SystemInfo.Endianness.LITTLE_ENDIAN);
+
         // Get mouse using filter
         HashMap<EventTypes, EventCode[]> fullCapabilitiesFilter = (
             new HashMap<>()
@@ -25,15 +30,15 @@ public class Main {
         fullCapabilitiesFilter.put(EventTypes.REL, filter);
         fullCapabilitiesFilter.put(EventTypes.MSC, eventCodeFilterMsc);
 
-        ArrayList<InputDevice> filteredDeviceList = (
-            KernalInputDevices.getDevices(fullCapabilitiesFilter)
+        ArrayList<EventDevice> filteredDeviceList = (
+            EventDevicesManager.getDevices(fullCapabilitiesFilter)
         );
 
         MouseMotionTracker mouseTracker = null;
 
         try {
             Mouse mouse = new Mouse(filteredDeviceList.get(0), DPI);
-            mouse.getDevice().getName();
+            System.out.println(mouse.getDevice().getName());
             mouseTracker = new MouseMotionTracker(mouse);
             
         } catch (FileNotFoundException e) {

@@ -1,8 +1,8 @@
-package eventclassification.eventcodes;
+package mousemotion.src.eventclassification.eventcodes;
 
 import java.util.HashMap;
 
-import eventclassification.EventTypes;
+import mousemotion.src.eventclassification.EventTypes;
 
 public enum Abs implements EventCode {
     ABS_X(0x00),

@@ -1,9 +1,9 @@
-package eventclassification;
+package mousemotion.src.eventclassification;
 
 import java.util.HashMap;
 import java.util.function.Function;
 
-import eventclassification.eventcodes.*;
+import mousemotion.src.eventclassification.eventcodes.*;
 
 public enum EventTypes implements EventCategory{
     SYN(0x00),

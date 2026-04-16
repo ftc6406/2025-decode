@@ -1,4 +1,4 @@
-package devicemanagement;
+package mousemotion.src.devicemanagement;
 
 /**
  * This class stores utility methods to convert a byte array into a long or 
@@ -21,8 +21,8 @@ public class ByteArrayConverson {
      * the number will be interpeted as little endian
      * 
      * @param arr The array containing bytes
-     * @param startIdx the start index at which the byte has the highest value
-     * @param endIdx the end index
+     * @param startIdx the index of the most significant byte
+     * @param endIdx the index of the least significant byte
      * @return the integer represented by the byte array
      */
     public static int toInt(

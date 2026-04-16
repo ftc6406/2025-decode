@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.media.metrics.Event;
+
 import org.firstinspires.ftc.teamcode.hardwareSystems.LimiterServo;
 import mousemotion.src.inputanalysis.*;
 import mousemotion.src.eventclassification.eventcodes.*;
@@ -104,8 +106,8 @@ public class BlueAuto extends CustomLinearOp {
         fullCapabilitiesFilter.put(EventTypes.REL, filter);
         fullCapabilitiesFilter.put(EventTypes.MSC, eventCodeFilterMsc);
 
-        ArrayList<InputDevice> filteredDeviceList = (
-                KernalInputDevices.getDevices(fullCapabilitiesFilter)
+        ArrayList<EventDevice> filteredDeviceList = (
+                EventDevicesManager.getDevices(fullCapabilitiesFilter)
         );
 
         telemetry.log().add("Filtered device list size: " + filteredDeviceList.size());
@@ -262,7 +264,7 @@ public class BlueAuto extends CustomLinearOp {
             if (mouseTracker != null) {
                 for (int i = 0; i < 100; i++) {
                     while (mouseTracker.getDisplacement()[1] > -1) {
-                        telemetry.addLine("Displacement: " + mouseTracker.getDisplacement()[1]);
+                        telemetry.log().add("Displacement: " + mouseTracker.getDisplacement()[1]);
                         mech.getFrontLeftMotor().setPower(1);
                         mech.getFrontRightMotor().setPower(1);
                         mech.getBackLeftMotor().setPower(1);
@@ -270,7 +272,7 @@ public class BlueAuto extends CustomLinearOp {
                     }
 
                     while (mouseTracker.getDisplacement()[1] < 0) {
-                        telemetry.addLine("Displacement: " + mouseTracker.getDisplacement()[1]);
+                        telemetry.log().add("Displacement: " + mouseTracker.getDisplacement()[1]);
                         mech.getFrontLeftMotor().setPower(1);
                         mech.getFrontRightMotor().setPower(1);
                         mech.getBackLeftMotor().setPower(1);

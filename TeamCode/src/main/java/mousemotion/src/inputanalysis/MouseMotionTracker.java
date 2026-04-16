@@ -1,11 +1,11 @@
-package inputanalysis;
+package mousemotion.src.inputanalysis;
 
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 
-import devicemanagement.*;
-import eventclassification.eventcodes.EventCode;
-import eventclassification.eventcodes.Rel;
+import mousemotion.src.devicemanagement.*;
+import mousemotion.src.eventclassification.eventcodes.EventCode;
+import mousemotion.src.eventclassification.eventcodes.Rel;
 
 public class MouseMotionTracker {
     /**
